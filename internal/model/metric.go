@@ -31,12 +31,12 @@ func (g *Gauge) Init() {
 	g.Values = make(map[string]float64)
 }
 
-func (r *Counter) AddValue(k, v string) error {
+func (c *Counter) AddValue(k, v string) error {
 	value, err := strconv.Atoi(v)
 	if err != nil {
 		return fmt.Errorf("expected int64, got %T", v)
 	}
-	r.Values[k] = int64(value)
+	c.Values[k] += int64(value)
 	return nil
 }
 
