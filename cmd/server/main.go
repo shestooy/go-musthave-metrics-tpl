@@ -1,9 +1,10 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/handlers"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
-	"net/http"
 )
 
 func main() {
