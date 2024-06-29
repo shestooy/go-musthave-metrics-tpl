@@ -19,7 +19,6 @@ func Test_getAllMetrics(t *testing.T) {
 	}
 }
 
-// TODO: Спросить у ментора как тут лучше сделать
 //func Test_postMetrics(t *testing.T) {
 //	tests := []struct {
 //		name   string
