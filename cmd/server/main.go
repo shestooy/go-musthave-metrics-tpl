@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/go-chi/chi/v5"
 	"net/http"
 
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/handlers"
@@ -16,9 +17,10 @@ func main() {
 }
 
 func start() error {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/update/{type}/{name}/{value}", handlers.ChangeMetric)
-	err := http.ListenAndServe(":8080", mux)
+	r := chi.NewRouter()
+	r.Post("/update/{type}/{name}/{value}", handlers.PostMetrics)
+	r.Get("/value/{type}/{name}", handlers.GetMetricId)
+	err := http.ListenAndServe(":8080", r)
 	if err != nil {
 		return err
 	}

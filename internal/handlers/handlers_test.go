@@ -27,7 +27,7 @@ func TestChangeMetric(t *testing.T) {
 			require.NoError(t, err)
 			w := httptest.NewRecorder()
 
-			ChangeMetric(w, r)
+			PostMetrics(w, r)
 			assert.Equal(t, tt.expectedCode, w.Code, "unexpected response code")
 		})
 	}
