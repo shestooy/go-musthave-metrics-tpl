@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
+	"html/template"
 	"net/http"
 )
 
@@ -50,5 +51,39 @@ func GetMetricId(res http.ResponseWriter, req *http.Request) {
 }
 
 func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
-
+	metrics := storage.Storage.GetAllMetrics()
+	str := `
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<title>Metrics</title>
+		</head>
+		<body>
+			<h1>Metrics</h1>
+			<table border="1">
+				<tr>
+					<th>Name</th>
+					<th>Type</th>
+					<th>Value</th>
+				</tr>
+				{{ range $name, $metric := . }}
+				<tr>
+					<td>{{ $name }}</td>
+					<td>{{ $metric.Type }}</td>
+					<td>{{ $metric.Value }}</td>
+				</tr>
+				{{ end }}
+			</table>
+		</body>
+		</html>
+		`
+	t, err := template.New("metrics").Parse(str)
+	if err != nil {
+		http.Error(res, "Unable to create template", http.StatusInternalServerError)
+		return
+	}
+	err = t.Execute(res, metrics)
+	if err != nil {
+		http.Error(res, "Unable to execute template", http.StatusInternalServerError)
+	}
 }
