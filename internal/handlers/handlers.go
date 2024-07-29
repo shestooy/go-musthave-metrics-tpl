@@ -52,7 +52,8 @@ func GetMetricId(res http.ResponseWriter, req *http.Request) {
 
 func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
 	metrics := storage.Storage.GetAllMetrics()
-	str := `
+
+	tmp := `
 		<!DOCTYPE html>
 		<html>
 		<head>
@@ -60,30 +61,57 @@ func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
 		</head>
 		<body>
 			<h1>Metrics</h1>
+
+			<h2>Counters</h2>
 			<table border="1">
 				<tr>
 					<th>Name</th>
-					<th>Type</th>
 					<th>Value</th>
 				</tr>
-				{{ range $name, $metric := . }}
+				{{ range $name, $value := .Counters }}
 				<tr>
 					<td>{{ $name }}</td>
-					<td>{{ $metric.Type }}</td>
-					<td>{{ $metric.Value }}</td>
+					<td>{{ $value }}</td>
 				</tr>
 				{{ end }}
 			</table>
+
+			<h2>Gauges</h2>
+			<table border="1">
+				<tr>
+					<th>Name</th>
+					<th>Value</th>
+				</tr>
+				{{ range $name, $value := .Gauges }}
+				<tr>
+					<td>{{ $name }}</td>
+					<td>{{ $value }}</td>
+				</tr>
+				{{ end }}
+			</table>
+
 		</body>
 		</html>
 		`
-	t, err := template.New("metrics").Parse(str)
+
+	t, err := template.New("metrics").Parse(tmp)
 	if err != nil {
-		http.Error(res, "Unable to create template", http.StatusInternalServerError)
+		http.Error(res, "не удалось создать шаблон", http.StatusInternalServerError)
 		return
 	}
-	err = t.Execute(res, metrics)
+
+	data := struct {
+		Counters interface{}
+		Gauges   interface{}
+	}{
+		Counters: metrics["counter"].GetAllValue(),
+		Gauges:   metrics["gauge"].GetAllValue(),
+	}
+
+	fmt.Printf("Data: %#v\n", data)
+
+	err = t.Execute(res, data)
 	if err != nil {
-		http.Error(res, "Unable to execute template", http.StatusInternalServerError)
+		http.Error(res, "не удалось выполнить шаблон", http.StatusInternalServerError)
 	}
 }

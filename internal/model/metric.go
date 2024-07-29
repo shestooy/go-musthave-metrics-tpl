@@ -10,6 +10,7 @@ type Metrics interface {
 	AddValue(k, v string) error
 	Init()
 	GetValueId(n string) (interface{}, error)
+	GetAllValue() interface{}
 }
 
 type Gauge struct {
@@ -40,6 +41,10 @@ func (g *Gauge) GetValueId(n string) (interface{}, error) {
 	return g.Values[n], nil
 }
 
+func (g *Gauge) GetAllValue() interface{} {
+	return g.Values
+}
+
 func (c *Counter) AddValue(k, v string) error {
 	value, err := strconv.Atoi(v)
 	if err != nil {
@@ -58,4 +63,8 @@ func (c *Counter) GetValueId(n string) (interface{}, error) {
 		return value, errors.New("unknown metric name")
 	}
 	return c.Values[n], nil
+}
+
+func (c *Counter) GetAllValue() interface{} {
+	return c.Values
 }
