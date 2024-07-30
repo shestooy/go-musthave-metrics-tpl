@@ -32,3 +32,39 @@ func TestChangeMetric(t *testing.T) {
 		})
 	}
 }
+
+func TestGetAllMetrics(t *testing.T) {
+	type args struct {
+		res http.ResponseWriter
+		req *http.Request
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			GetAllMetrics(tt.args.res, tt.args.req)
+		})
+	}
+}
+
+func TestGetMetricId(t *testing.T) {
+	type args struct {
+		res http.ResponseWriter
+		req *http.Request
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			GetMetricId(tt.args.res, tt.args.req)
+		})
+	}
+}

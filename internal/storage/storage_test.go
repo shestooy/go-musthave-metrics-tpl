@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/model"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -42,6 +43,27 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 			m.Init()
 			err := m.UpdateMetric(tt.values.t, tt.values.k, tt.values.v)
 			assert.Equal(t, tt.wantErr, err != nil, "unexpected error")
+		})
+	}
+}
+
+func TestMemStorage_GetAllMetrics(t *testing.T) {
+	type fields struct {
+		Metrics map[string]model.Metrics
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   map[string]model.Metrics
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &MemStorage{
+				Metrics: tt.fields.Metrics,
+			}
+			assert.Equalf(t, tt.want, m.GetAllMetrics(), "GetAllMetrics()")
 		})
 	}
 }

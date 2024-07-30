@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/go-resty/resty/v2"
 	"log"
 	"math/rand"
 	"net/http"
@@ -61,35 +62,25 @@ func getAllMetrics() []Metric {
 }
 
 func postMetrics(metrics []Metric) error {
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
+	client := resty.New()
 
 	for _, metric := range metrics {
-		url := fmt.Sprintf("http://localhost:8080/update/%s/%s/%v", metric.Type, metric.Name, metric.Value)
-		req, err := http.NewRequest(http.MethodPost, url, nil)
-		if err != nil {
-			log.Printf("error in creating request: %s. Name metric: %s", err, metric.Name)
-			return err
-		}
-		req.Header.Set("Content-Type", "text/plain")
+		resp, err := client.R().SetPathParams(map[string]string{
+			"type":  metric.Type,
+			"name":  metric.Name,
+			"value": fmt.Sprintf("%v", metric.Value),
+		}).SetHeader("Content-Type", "text/plain").Post("http://localhost:8080/update/{type}/{name}/{value}")
 
-		resp, err := client.Do(req)
 		if err != nil {
 			log.Printf("error send request: %s. Name metric: %s", err, metric.Name)
 			return err
 		}
-		if resp.StatusCode != http.StatusOK {
+
+		if resp.StatusCode() != http.StatusOK {
 			log.Printf("unexpected status code. Expected code 200, got %d. Name metric: %s", resp.StatusCode, metric.Name)
 			return errors.New("unexpected status code")
 		}
-		err = resp.Body.Close()
-		if err != nil {
-			log.Printf("error responce close body: %d. Name metric: %s", resp.StatusCode, metric.Name)
-			return err
-		}
 	}
-
 	pollCount = 0
 	return nil
 }
