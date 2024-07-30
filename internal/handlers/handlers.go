@@ -29,7 +29,7 @@ func PostMetrics(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/plain")
 }
 
-func GetMetricId(res http.ResponseWriter, req *http.Request) {
+func GetMetricID(res http.ResponseWriter, req *http.Request) {
 	params := make([]string, 2)
 	params[0] = chi.URLParam(req, "type")
 	params[1] = chi.URLParam(req, "name")
