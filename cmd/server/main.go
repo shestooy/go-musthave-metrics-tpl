@@ -26,7 +26,7 @@ func start() error {
 	r.Use(middleware.Recoverer)
 
 	r.Post("/update/{type}/{name}/{value}", handlers.PostMetrics)
-	r.Get("/value/{type}/{name}", handlers.GetMetricId)
+	r.Get("/value/{type}/{name}", handlers.GetMetricID)
 	r.Get("/", handlers.GetAllMetrics)
 	err := http.ListenAndServe(":8080", r)
 	if err != nil {
