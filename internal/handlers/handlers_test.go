@@ -60,6 +60,7 @@ func TestChangeMetric(t *testing.T) {
 
 func TestGetMetricId(t *testing.T) {
 	ts := httptest.NewServer(testServer())
+	defer ts.Close()
 	tests := []struct {
 		name         string
 		method       string
@@ -81,6 +82,7 @@ func TestGetMetricId(t *testing.T) {
 
 func TestGetAllMetrics(t *testing.T) {
 	ts := httptest.NewServer(testServer())
+	defer ts.Close()
 	tests := []struct {
 		name         string
 		method       string
