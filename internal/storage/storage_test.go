@@ -48,22 +48,29 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 }
 
 func TestMemStorage_GetAllMetrics(t *testing.T) {
-	type fields struct {
-		Metrics map[string]model.Metrics
-	}
 	tests := []struct {
 		name   string
-		fields fields
+		values map[string]model.Metrics
 		want   map[string]model.Metrics
 	}{
-		// TODO: Add test cases.
+		{
+			name: "TestStorageGetter",
+			values: map[string]model.Metrics{
+				"gauge":   &model.Gauge{Values: map[string]float64{"t1": 65.1}},
+				"counter": &model.Counter{Values: map[string]int64{"t2": 3423}},
+			},
+			want: map[string]model.Metrics{
+				"counter": &model.Counter{Values: map[string]int64{"t2": 3423}},
+				"gauge":   &model.Gauge{Values: map[string]float64{"t1": 65.1}},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &MemStorage{
-				Metrics: tt.fields.Metrics,
-			}
-			assert.Equalf(t, tt.want, m.GetAllMetrics(), "GetAllMetrics()")
+			m := &MemStorage{}
+			m.Metrics = tt.values
+			assert.NotEmpty(t, m)
+			assert.Equal(t, tt.want, m.GetAllMetrics())
 		})
 	}
 }

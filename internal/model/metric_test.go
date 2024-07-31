@@ -63,8 +63,9 @@ func TestCounter_GetAllValue(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tCounter := Counter{}
+			tCounter := &Counter{}
 			tCounter.Values = tt.values
+			assert.NotEmpty(t, tCounter)
 			assert.Equal(t, tt.want, tCounter.GetAllValue())
 		})
 	}
@@ -127,8 +128,9 @@ func TestGauge_GetAllValue(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tGauge := Gauge{}
+			tGauge := &Gauge{}
 			tGauge.Values = tt.values
+			assert.NotEmpty(t, tGauge)
 			assert.Equal(t, tt.want, tGauge.GetAllValue())
 		})
 	}
