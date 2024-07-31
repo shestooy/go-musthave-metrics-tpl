@@ -78,7 +78,7 @@ func postMetrics(metrics []Metric) error {
 		}
 
 		if resp.StatusCode() != http.StatusOK {
-			log.Printf("unexpected status code. Expected code 200, got %d. Name metric: %s", resp.StatusCode, metric.Name)
+			log.Printf("unexpected status code. Expected code 200, got %v. Name metric: %s", resp.StatusCode, metric.Name)
 			return errors.New("unexpected status code")
 		}
 	}
