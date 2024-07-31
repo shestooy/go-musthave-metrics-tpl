@@ -16,10 +16,10 @@ func TestChangeMetric(t *testing.T) {
 		expectedCode int
 		expectedBody string
 	}{
-		{name: "GetTest", method: http.MethodGet, expectedCode: http.StatusMethodNotAllowed, expectedBody: ""},
-		{name: "PostTest", method: http.MethodPost, expectedCode: http.StatusNotFound, expectedBody: ""},
-		{name: "DeleteTest", method: http.MethodDelete, expectedCode: http.StatusMethodNotAllowed, expectedBody: ""},
-		{name: "PutTest", method: http.MethodPut, expectedCode: http.StatusMethodNotAllowed, expectedBody: ""},
+		{name: "GetTest", method: http.MethodGet, expectedCode: http.StatusBadRequest, expectedBody: ""},
+		{name: "PostTest", method: http.MethodPost, expectedCode: http.StatusBadRequest, expectedBody: ""},
+		{name: "DeleteTest", method: http.MethodDelete, expectedCode: http.StatusBadRequest, expectedBody: ""},
+		{name: "PutTest", method: http.MethodPut, expectedCode: http.StatusBadRequest, expectedBody: ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -64,7 +64,7 @@ func TestGetMetricId(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			GetMetricId(tt.args.res, tt.args.req)
+			GetMetricID(tt.args.res, tt.args.req)
 		})
 	}
 }

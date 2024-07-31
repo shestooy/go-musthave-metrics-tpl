@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"html/template"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func PostMetrics(res http.ResponseWriter, req *http.Request) {
