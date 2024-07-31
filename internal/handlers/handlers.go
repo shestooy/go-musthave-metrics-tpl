@@ -41,7 +41,7 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	value, err := storage.Storage.GetMetricId(params[0], params[1])
+	value, err := storage.Storage.GetMetricID(params[0], params[1])
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return

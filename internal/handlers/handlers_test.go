@@ -58,7 +58,7 @@ func TestChangeMetric(t *testing.T) {
 	}
 }
 
-func TestGetMetricId(t *testing.T) {
+func TestGetMetricID(t *testing.T) {
 	ts := httptest.NewServer(testServer())
 	defer ts.Close()
 	tests := []struct {

@@ -9,7 +9,7 @@ import (
 type Metrics interface {
 	AddValue(k, v string) error
 	Init()
-	GetValueId(n string) (interface{}, error)
+	GetValueID(n string) (interface{}, error)
 	GetAllValue() interface{}
 }
 
@@ -34,7 +34,7 @@ func (g *Gauge) Init() {
 	g.Values = make(map[string]float64)
 }
 
-func (g *Gauge) GetValueId(n string) (interface{}, error) {
+func (g *Gauge) GetValueID(n string) (interface{}, error) {
 	if value, ok := g.Values[n]; !ok {
 		return value, errors.New("unknown metric name")
 	}
@@ -58,7 +58,7 @@ func (c *Counter) Init() {
 	c.Values = make(map[string]int64)
 }
 
-func (c *Counter) GetValueId(n string) (interface{}, error) {
+func (c *Counter) GetValueID(n string) (interface{}, error) {
 	if value, ok := c.Values[n]; !ok {
 		return value, errors.New("unknown metric name")
 	}
