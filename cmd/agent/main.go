@@ -3,12 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"log"
 	"math/rand"
 	"net/http"
 	"runtime"
 	"time"
+
+	"github.com/go-resty/resty/v2"
 )
 
 const (
