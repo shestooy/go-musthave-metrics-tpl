@@ -46,9 +46,8 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return
 	}
-	ans := fmt.Sprintf("%s is equal to %v\n", params[1], value)
+	ans := fmt.Sprintf("%v", value)
 	res.Header().Set("Content-Type", "text/plain")
-	res.WriteHeader(http.StatusOK)
 	res.Write([]byte(ans))
 }
 
