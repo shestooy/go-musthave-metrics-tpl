@@ -70,7 +70,7 @@ func postMetrics(metrics []Metric) error {
 			"type":  metric.Type,
 			"name":  metric.Name,
 			"value": fmt.Sprintf("%v", metric.Value),
-		}).SetHeader("Content-Type", "text/plain").Post(agentEndPoint + "/update/{type}/{name}/{value}")
+		}).SetHeader("Content-Type", "text/plain").Post("http://" + agentEndPoint + "/update/{type}/{name}/{value}")
 
 		if err != nil {
 			log.Printf("error send request: %s. Name metric: %s", err, metric.Name)
