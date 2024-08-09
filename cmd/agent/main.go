@@ -70,7 +70,7 @@ func postMetrics(metrics []Metric) error {
 			"type":  metric.Type,
 			"name":  metric.Name,
 			"value": fmt.Sprintf("%v", metric.Value),
-		}).SetHeader("Content-Type", "text/plain").Post("http://localhost:8080/update/{type}/{name}/{value}")
+		}).SetHeader("Content-Type", "text/plain").Post(agentEndPoint + "/update/{type}/{name}/{value}")
 
 		if err != nil {
 			log.Printf("error send request: %s. Name metric: %s", err, metric.Name)
@@ -87,21 +87,31 @@ func postMetrics(metrics []Metric) error {
 }
 
 func start() error {
-	pollInterval := 2 * time.Second
+	pollTicker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+	defer pollTicker.Stop()
+
+	reportTicker := time.NewTicker(time.Duration(reportInterval) * time.Second)
+	defer reportTicker.Stop()
+
+	metrics := make([]Metric, 0)
+
 	for {
-		metrics := make([]Metric, 0)
-		for i := 0; i < 5; i++ {
+		select {
+		case <-pollTicker.C:
 			metrics = append(metrics, getAllMetrics()...)
-			time.Sleep(pollInterval)
-		}
-		err := postMetrics(metrics)
-		if err != nil {
-			return err
+
+		case <-reportTicker.C:
+			err := postMetrics(metrics)
+			if err != nil {
+				return err
+			}
+			metrics = make([]Metric, 0)
 		}
 	}
 }
 
 func main() {
+	parseFlag()
 	err := start()
 	if err != nil {
 		log.Fatal("send metrics failed")

@@ -109,8 +109,6 @@ func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
 		Gauges:   metrics["gauge"].GetAllValue(),
 	}
 
-	fmt.Printf("Data: %#v\n", data)
-
 	err = t.Execute(res, data)
 	if err != nil {
 		http.Error(res, "не удалось выполнить шаблон", http.StatusInternalServerError)

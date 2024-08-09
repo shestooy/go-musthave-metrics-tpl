@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"net/http"
@@ -10,7 +11,8 @@ import (
 )
 
 func main() {
-	storage.Storage.Init()
+	parseFlag()
+
 	err := start()
 	if err != nil {
 		panic(err)
@@ -18,6 +20,12 @@ func main() {
 }
 
 func start() error {
+	storage.Storage.Init()
+	fmt.Printf("Server start on %s\n", serverEndPoint)
+	return http.ListenAndServe(serverEndPoint, GetRouter())
+}
+
+func GetRouter() chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -28,9 +36,5 @@ func start() error {
 	r.Post("/update/{type}/{name}/{value}", handlers.PostMetrics)
 	r.Get("/value/{type}/{name}", handlers.GetMetricID)
 	r.Get("/", handlers.GetAllMetrics)
-	err := http.ListenAndServe(":8080", r)
-	if err != nil {
-		return err
-	}
-	return err
+	return r
 }
