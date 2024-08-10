@@ -25,7 +25,7 @@ func PostMetrics(res http.ResponseWriter, req *http.Request) {
 
 	err := storage.Storage.UpdateMetric(params[0], params[1], params[2])
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 	res.Header().Set("Content-Type", "text/plain")
