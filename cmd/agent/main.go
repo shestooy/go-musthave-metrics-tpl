@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -62,15 +63,16 @@ func getAllMetrics() []Metric {
 	}
 }
 
-func postMetrics(metrics []Metric) error {
+func postMetrics(url string, metrics []Metric) error {
 	client := resty.New()
+	url, _ = strings.CutPrefix(url, "http://")
 
 	for _, metric := range metrics {
 		resp, err := client.R().SetPathParams(map[string]string{
 			"type":  metric.Type,
 			"name":  metric.Name,
 			"value": fmt.Sprintf("%v", metric.Value),
-		}).SetHeader("Content-Type", "text/plain").Post("http://" + agentEndPoint + "/update/{type}/{name}/{value}")
+		}).SetHeader("Content-Type", "text/plain").Post("http://" + url + "/update/{type}/{name}/{value}")
 
 		if err != nil {
 			log.Printf("error send request: %s. Name metric: %s", err, metric.Name)
@@ -101,7 +103,7 @@ func start() error {
 			metrics = append(metrics, getAllMetrics()...)
 
 		case <-reportTicker.C:
-			err := postMetrics(metrics)
+			err := postMetrics(agentEndPoint, metrics)
 			if err != nil {
 				return err
 			}
