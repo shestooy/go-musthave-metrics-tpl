@@ -22,6 +22,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) int {
 	return resp.StatusCode
 }
 
+// взять функцию getRouter из httpserver мешает цикличный импорт
 func testServer() chi.Router {
 	storage.Storage.Init()
 	r := chi.NewRouter()
