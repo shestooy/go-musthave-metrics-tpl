@@ -3,6 +3,7 @@ package agent
 import (
 	r "github.com/shestooy/go-musthave-metrics-tpl.git/internal/httpserver"
 	m "github.com/shestooy/go-musthave-metrics-tpl.git/internal/metrics"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"net/http/httptest"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 
 func TestPostMetrics(t *testing.T) {
 	s := httptest.NewServer(r.GetRouter())
+	storage.Storage.Init()
 	defer s.Close()
 	tests := []struct {
 		name   string
