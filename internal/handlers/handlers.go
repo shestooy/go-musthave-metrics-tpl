@@ -1,9 +1,10 @@
 package handlers
 
 import (
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"net/http"
 	"strings"
+
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 )
 
 func ChangeMetric(res http.ResponseWriter, req *http.Request) {
@@ -20,5 +21,5 @@ func ChangeMetric(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 	}
-
+	res.Header().Set("Content-Type", "text/plain")
 }

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/model"
 )
 
