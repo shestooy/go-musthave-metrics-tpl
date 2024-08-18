@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,6 +38,27 @@ func TestCounter_AddValue(t *testing.T) {
 			c.Init()
 			err := c.AddValue(tt.name, tt.value)
 			assert.Equal(t, tt.wantErr, err != nil, "unexpected error")
+		})
+	}
+}
+
+func TestCounter_GetValueID(t *testing.T) {
+	tests := []struct {
+		name    string
+		storage map[string]int64
+		key     string
+		want    int64
+	}{
+		{name: "TestCounterGetterByID", storage: map[string]int64{"test": 10}, key: "test", want: 10},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Counter{
+				Values: tt.storage,
+			}
+			v, err := c.GetValueID(tt.key)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, v)
 		})
 	}
 }
@@ -102,6 +124,27 @@ func TestGauge_AddValue(t *testing.T) {
 			c.Init()
 			err := c.AddValue(tt.name, tt.value)
 			assert.Equal(t, tt.wantErr, err != nil, "unexpected error")
+		})
+	}
+}
+
+func TestGauge_GetValueID(t *testing.T) {
+	tests := []struct {
+		name    string
+		storage map[string]float64
+		key     string
+		want    float64
+	}{
+		{name: "TestGaugeGetterByID", storage: map[string]float64{"test": 132.13}, key: "test", want: 132.13},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := &Gauge{
+				Values: tt.storage,
+			}
+			v, err := g.GetValueID(tt.key)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, v)
 		})
 	}
 }

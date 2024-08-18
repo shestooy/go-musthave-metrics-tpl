@@ -1,15 +1,20 @@
 package main
 
-import "testing"
+import (
+	"github.com/stretchr/testify/assert"
+	"testing"
+)
 
-func Test_start(t *testing.T) {
+func TestGetRouter(t *testing.T) {
 	tests := []struct {
 		name string
 	}{
-		{"the test is temporary"},
+		{name: "TestGetRouter"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			r := GetRouter()
+			assert.NotEmpty(t, r)
 		})
 	}
 }

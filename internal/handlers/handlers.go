@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"html/template"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -48,7 +49,10 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 	}
 	ans := fmt.Sprintf("%v", value)
 	res.Header().Set("Content-Type", "text/plain")
-	res.Write([]byte(ans))
+	_, err = res.Write([]byte(ans))
+	if err != nil {
+		log.Println(err.Error())
+	}
 }
 
 func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
@@ -108,8 +112,6 @@ func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
 		Counters: metrics["counter"].GetAllValue(),
 		Gauges:   metrics["gauge"].GetAllValue(),
 	}
-
-	fmt.Printf("Data: %#v\n", data)
 
 	err = t.Execute(res, data)
 	if err != nil {

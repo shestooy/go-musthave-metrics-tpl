@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -62,15 +63,16 @@ func getAllMetrics() []Metric {
 	}
 }
 
-func postMetrics(metrics []Metric) error {
+func postMetrics(url string, metrics []Metric) error {
 	client := resty.New()
+	url, _ = strings.CutPrefix(url, "http://")
 
 	for _, metric := range metrics {
 		resp, err := client.R().SetPathParams(map[string]string{
 			"type":  metric.Type,
 			"name":  metric.Name,
 			"value": fmt.Sprintf("%v", metric.Value),
-		}).SetHeader("Content-Type", "text/plain").Post("http://localhost:8080/update/{type}/{name}/{value}")
+		}).SetHeader("Content-Type", "text/plain").Post("http://" + url + "/update/{type}/{name}/{value}")
 
 		if err != nil {
 			log.Printf("error send request: %s. Name metric: %s", err, metric.Name)
@@ -87,21 +89,31 @@ func postMetrics(metrics []Metric) error {
 }
 
 func start() error {
-	pollInterval := 2 * time.Second
+	pollTicker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+	defer pollTicker.Stop()
+
+	reportTicker := time.NewTicker(time.Duration(reportInterval) * time.Second)
+	defer reportTicker.Stop()
+
+	metrics := make([]Metric, 0)
+
 	for {
-		metrics := make([]Metric, 0)
-		for i := 0; i < 5; i++ {
+		select {
+		case <-pollTicker.C:
 			metrics = append(metrics, getAllMetrics()...)
-			time.Sleep(pollInterval)
-		}
-		err := postMetrics(metrics)
-		if err != nil {
-			return err
+
+		case <-reportTicker.C:
+			err := postMetrics(agentEndPoint, metrics)
+			if err != nil {
+				return err
+			}
+			metrics = make([]Metric, 0)
 		}
 	}
 }
 
 func main() {
+	parseFlag()
 	err := start()
 	if err != nil {
 		log.Fatal("send metrics failed")
