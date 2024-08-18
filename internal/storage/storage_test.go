@@ -2,10 +2,10 @@ package storage
 
 import (
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/model"
-	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMemStorage_Init(t *testing.T) {

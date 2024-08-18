@@ -55,7 +55,7 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
+func GetAllMetrics(res http.ResponseWriter, _ *http.Request) {
 	metrics := storage.Storage.GetAllMetrics()
 
 	tmp := `
