@@ -9,7 +9,10 @@ import (
 var Storage = MemStorage{}
 
 type IStorage interface {
+	Init()
 	UpdateMetric(t, k, v string) error
+	GetMetricID(t, n string) (interface{}, error)
+	GetAllMetrics() map[string]model.Metrics
 }
 
 type MemStorage struct {
@@ -33,4 +36,19 @@ func (m *MemStorage) UpdateMetric(t, k, v string) error {
 		return err
 	}
 	return nil
+}
+
+func (m *MemStorage) GetMetricID(t, n string) (interface{}, error) {
+	if _, ok := m.Metrics[t]; !ok {
+		return 0, errors.New("non correct type of metric")
+	}
+	value, err := m.Metrics[t].GetValueID(n)
+	if err != nil {
+		return value, err
+	}
+	return value, nil
+}
+
+func (m *MemStorage) GetAllMetrics() map[string]model.Metrics {
+	return m.Metrics
 }
