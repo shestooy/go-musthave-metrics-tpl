@@ -7,8 +7,12 @@ import (
 )
 
 func main() {
-	f.ParseAgentFlag()
-	err := a.Start()
+	err := f.ParseAgentFlag()
+	if err != nil {
+		log.Fatal("parse flag for agent failed")
+	}
+
+	err = a.Start()
 	if err != nil {
 		log.Fatal("send metrics failed")
 	}
