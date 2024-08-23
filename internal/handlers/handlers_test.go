@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"net/http"
 	"net/http/httptest"
@@ -14,7 +15,6 @@ import (
 func testRequest(t *testing.T, ts *httptest.Server, method, path string) int {
 	req, err := http.NewRequest(method, ts.URL+path, nil)
 	require.NoError(t, err)
-
 	resp, err := ts.Client().Do(req)
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -24,12 +24,18 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) int {
 
 // взять функцию getRouter из httpserver мешает цикличный импорт
 func testServer() chi.Router {
-	storage.Storage.Init()
+	storage.MStorage.Init()
 	r := chi.NewRouter()
 
-	r.Post("/update/{type}/{name}/{value}", PostMetrics)
-	r.Get("/value/{type}/{name}", GetMetricID)
 	r.Get("/", GetAllMetrics)
+	r.Route("/update", func(r chi.Router) {
+		r.Post("/", PostMetricsWithJSON)
+		r.Post("/{type}/{name}/{value}", PostMetrics)
+	})
+	r.Route("/value", func(r chi.Router) {
+		r.Get("/", GetMetricIDWithJSON)
+		r.Get("/{type}/{name}", GetMetricID)
+	})
 	return r
 }
 
@@ -94,6 +100,148 @@ func TestGetAllMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			code := testRequest(t, ts, tt.method, tt.path)
 			assert.Equal(t, tt.expectedCode, code, "unexpected response code")
+		})
+	}
+}
+
+func TestPostMetricsWithJSON(t *testing.T) {
+	ts := httptest.NewServer(testServer())
+	defer ts.Close()
+
+	tests := []struct {
+		name         string
+		method       string
+		body         string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "method_get",
+			method:       http.MethodGet,
+			expectedCode: http.StatusMethodNotAllowed,
+			expectedBody: "",
+		},
+		{
+			name:         "method_put",
+			method:       http.MethodPut,
+			expectedCode: http.StatusMethodNotAllowed,
+			expectedBody: "",
+		},
+		{
+			name:         "method_delete",
+			method:       http.MethodDelete,
+			expectedCode: http.StatusMethodNotAllowed,
+			expectedBody: "",
+		},
+		{
+			name:         "method_post_without_body",
+			method:       http.MethodPost,
+			expectedCode: http.StatusBadRequest,
+			expectedBody: "",
+		},
+		{
+			name:         "method_post_unsupported_type",
+			method:       http.MethodPost,
+			body:         `{"request": {"type": "idunno", "command": "do something"}, "version": "1.0"}`,
+			expectedCode: http.StatusBadRequest,
+			expectedBody: "",
+		},
+		{
+			name:   "method_post_success",
+			method: http.MethodPost,
+			body:   `{"id": "temperature","type": "counter", "delta": 34}`,
+
+			expectedCode: http.StatusOK,
+			expectedBody: `{"id": "temperature","type": "counter", "delta": 34}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest(tt.method, ts.URL+"/update/", bytes.NewReader([]byte(tt.body)))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			resp, err := ts.Client().Do(req)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedCode, resp.StatusCode, "unexpected response code")
+			resp.Body.Close()
+		})
+	}
+}
+
+func TestGetMetricIDWithJSON(t *testing.T) {
+	ts := httptest.NewServer(testServer())
+	defer ts.Close()
+
+	prepReq, err := http.NewRequest(http.MethodPost, ts.URL+"/update/",
+		bytes.NewReader([]byte(`{"id": "temperature","type": "counter", "delta": 34}`)))
+
+	require.NoError(t, err)
+	prepReq.Header.Set("Content-Type", "application/json")
+
+	prepResp, err := ts.Client().Do(prepReq)
+	require.NoError(t, err)
+	err = prepResp.Body.Close()
+	require.NoError(t, err)
+
+	tests := []struct {
+		name         string
+		method       string
+		body         string
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "method_post",
+			method:       http.MethodPost,
+			expectedCode: http.StatusMethodNotAllowed,
+			expectedBody: "",
+		},
+		{
+			name:         "method_put",
+			method:       http.MethodPut,
+			expectedCode: http.StatusMethodNotAllowed,
+			expectedBody: "",
+		},
+		{
+			name:         "method_delete",
+			method:       http.MethodDelete,
+			expectedCode: http.StatusMethodNotAllowed,
+			expectedBody: "",
+		},
+		{
+			name:         "method_post_without_body",
+			method:       http.MethodGet,
+			expectedCode: http.StatusBadRequest,
+			expectedBody: "",
+		},
+		{
+			name:         "method_post_unsupported_type",
+			method:       http.MethodGet,
+			body:         `{"request": {"type": "idunno", "command": "do something"}, "version": "1.0"}`,
+			expectedCode: http.StatusNotFound,
+			expectedBody: "",
+		},
+		{
+			name:   "method_post_success",
+			method: http.MethodGet,
+			body:   `{"id": "temperature","type": "counter"}`,
+
+			expectedCode: http.StatusOK,
+			expectedBody: `{"id": "temperature","type": "counter","delta": 6}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, err := http.NewRequest(tt.method, ts.URL+"/value/", bytes.NewReader([]byte(tt.body)))
+			require.NoError(t, err)
+			req.Header.Set("Content-Type", "application/json")
+
+			resp, err := ts.Client().Do(req)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedCode, resp.StatusCode, "unexpected response code")
+			err = resp.Body.Close()
 		})
 	}
 }
