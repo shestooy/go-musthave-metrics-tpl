@@ -17,7 +17,8 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) int {
 	require.NoError(t, err)
 	resp, err := ts.Client().Do(req)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	err = resp.Body.Close()
+	require.NoError(t, err)
 
 	return resp.StatusCode
 }
@@ -165,7 +166,8 @@ func TestPostMetricsWithJSON(t *testing.T) {
 			resp, err := ts.Client().Do(req)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedCode, resp.StatusCode, "unexpected response code")
-			resp.Body.Close()
+			err = resp.Body.Close()
+			require.NoError(t, err)
 		})
 	}
 }
