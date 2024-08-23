@@ -1,4 +1,4 @@
-package model
+package types
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-type Metrics interface {
+type Storage interface {
 	AddValue(k, v string) error
 	Init()
 	GetValueID(n string) (interface{}, error)

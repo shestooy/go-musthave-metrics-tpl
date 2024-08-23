@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/model"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage/types"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,7 +16,7 @@ func TestMemStorage_Init(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &MemStorage{}
+			c := &Storage{}
 			c.Init()
 			assert.NotEmpty(t, tests)
 		})
@@ -40,7 +40,7 @@ func TestMemStorage_UpdateMetric(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &MemStorage{}
+			m := &Storage{}
 			m.Init()
 			err := m.UpdateMetric(tt.values.t, tt.values.k, tt.values.v)
 			assert.Equal(t, tt.wantErr, err != nil, "unexpected error")
@@ -52,16 +52,16 @@ func TestMemStorage_GetMetricID(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		values map[string]model.Metrics
+		values map[string]types.Storage
 		args   []string
 		want   interface{}
 	}{
-		{name: "TestGetMetricByID", values: map[string]model.Metrics{"gauge": &model.Gauge{Values: map[string]float64{"test": 1.5}}},
+		{name: "TestGetMetricByID", values: map[string]types.Storage{"gauge": &types.Gauge{Values: map[string]float64{"test": 1.5}}},
 			args: []string{"gauge", "test"}, want: 1.5},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &MemStorage{
+			m := &Storage{
 				Metrics: tt.values,
 			}
 			v, err := m.GetMetricID(tt.args[0], tt.args[1])
@@ -74,24 +74,24 @@ func TestMemStorage_GetMetricID(t *testing.T) {
 func TestMemStorage_GetAllMetrics(t *testing.T) {
 	tests := []struct {
 		name   string
-		values map[string]model.Metrics
-		want   map[string]model.Metrics
+		values map[string]types.Storage
+		want   map[string]types.Storage
 	}{
 		{
 			name: "TestStorageGetter",
-			values: map[string]model.Metrics{
-				"gauge":   &model.Gauge{Values: map[string]float64{"t1": 65.1}},
-				"counter": &model.Counter{Values: map[string]int64{"t2": 3423}},
+			values: map[string]types.Storage{
+				"gauge":   &types.Gauge{Values: map[string]float64{"t1": 65.1}},
+				"counter": &types.Counter{Values: map[string]int64{"t2": 3423}},
 			},
-			want: map[string]model.Metrics{
-				"counter": &model.Counter{Values: map[string]int64{"t2": 3423}},
-				"gauge":   &model.Gauge{Values: map[string]float64{"t1": 65.1}},
+			want: map[string]types.Storage{
+				"counter": &types.Counter{Values: map[string]int64{"t2": 3423}},
+				"gauge":   &types.Gauge{Values: map[string]float64{"t1": 65.1}},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &MemStorage{}
+			m := &Storage{}
 			m.Metrics = tt.values
 			assert.NotEmpty(t, m)
 			assert.Equal(t, tt.want, m.GetAllMetrics())
