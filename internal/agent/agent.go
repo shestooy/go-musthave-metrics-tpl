@@ -3,8 +3,8 @@ package agent
 import (
 	"errors"
 	"fmt"
+	m "github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent/metrics"
 	f "github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
-	m "github.com/shestooy/go-musthave-metrics-tpl.git/internal/metrics"
 	"log"
 	"net/http"
 	"strings"
