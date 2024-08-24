@@ -19,7 +19,7 @@ func TestMetrics_GetValue(t *testing.T) {
 				MType: "gauge",
 				Value: func() *float64 { v := 42.42; return &v }(),
 			},
-			expected: "42.420000",
+			expected: "42.42",
 		},
 		{
 			name: "gaugeWithOutValue",

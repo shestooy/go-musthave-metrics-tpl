@@ -15,7 +15,7 @@ func (m *Metrics) GetValue() string {
 		if m.Value == nil {
 			return ""
 		}
-		return strconv.FormatFloat(*m.Value, 'f', 6, 64)
+		return strconv.FormatFloat(*m.Value, 'f', -1, 64)
 	case "counter":
 		if m.Delta == nil {
 			return ""
