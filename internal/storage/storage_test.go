@@ -52,11 +52,11 @@ func TestMemStorage_GetMetricID(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		values map[string]types.Storage
+		values map[string]types.Metrics
 		args   []string
 		want   interface{}
 	}{
-		{name: "TestGetMetricByID", values: map[string]types.Storage{"gauge": &types.Gauge{Values: map[string]float64{"test": 1.5}}},
+		{name: "TestGetMetricByID", values: map[string]types.Metrics{"gauge": &types.Gauge{Values: map[string]float64{"test": 1.5}}},
 			args: []string{"gauge", "test"}, want: 1.5},
 	}
 	for _, tt := range tests {
@@ -74,16 +74,16 @@ func TestMemStorage_GetMetricID(t *testing.T) {
 func TestMemStorage_GetAllMetrics(t *testing.T) {
 	tests := []struct {
 		name   string
-		values map[string]types.Storage
-		want   map[string]types.Storage
+		values map[string]types.Metrics
+		want   map[string]types.Metrics
 	}{
 		{
 			name: "TestStorageGetter",
-			values: map[string]types.Storage{
+			values: map[string]types.Metrics{
 				"gauge":   &types.Gauge{Values: map[string]float64{"t1": 65.1}},
 				"counter": &types.Counter{Values: map[string]int64{"t2": 3423}},
 			},
-			want: map[string]types.Storage{
+			want: map[string]types.Metrics{
 				"counter": &types.Counter{Values: map[string]int64{"t2": 3423}},
 				"gauge":   &types.Gauge{Values: map[string]float64{"t1": 65.1}},
 			},
