@@ -56,7 +56,7 @@ func Start() error {
 			metrics = append(metrics, m.GetAllMetrics()...)
 
 		case <-reportTicker.C:
-			metrics = append(metrics, m.Metric{MType: "counter", ID: "PollCount", Delta: &m.PollCount})
+			metrics = append(metrics, m.Metric{MType: m.Counter, ID: "PollCount", Delta: &m.PollCount})
 			err := postMetrics(f.AgentEndPoint, metrics)
 			if err != nil {
 				return err

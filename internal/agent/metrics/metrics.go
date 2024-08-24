@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	gauge   = "gauge"
-	counter = "counter"
+	Gauge   = "gauge"
+	Counter = "counter"
 )
 
 type Metric struct {
@@ -26,33 +26,33 @@ func GetAllMetrics() []Metric {
 		return &val
 	}
 	return []Metric{
-		{MType: gauge, ID: "Alloc", Value: float64Ptr(float64(m.Alloc))},
-		{MType: gauge, ID: "BuckHashSys", Value: float64Ptr(float64(m.BuckHashSys))},
-		{MType: gauge, ID: "Frees", Value: float64Ptr(float64(m.Frees))},
-		{MType: gauge, ID: "GCCPUFraction", Value: float64Ptr(m.GCCPUFraction)},
-		{MType: gauge, ID: "GCSys", Value: float64Ptr(float64(m.GCSys))},
-		{MType: gauge, ID: "HeapAlloc", Value: float64Ptr(float64(m.HeapAlloc))},
-		{MType: gauge, ID: "HeapIdle", Value: float64Ptr(float64(m.HeapIdle))},
-		{MType: gauge, ID: "HeapInuse", Value: float64Ptr(float64(m.HeapInuse))},
-		{MType: gauge, ID: "HeapObjects", Value: float64Ptr(float64(m.HeapObjects))},
-		{MType: gauge, ID: "HeapReleased", Value: float64Ptr(float64(m.HeapReleased))},
-		{MType: gauge, ID: "HeapSys", Value: float64Ptr(float64(m.HeapSys))},
-		{MType: gauge, ID: "LastGC", Value: float64Ptr(float64(m.LastGC))},
-		{MType: gauge, ID: "Lookups", Value: float64Ptr(float64(m.Lookups))},
-		{MType: gauge, ID: "MCacheInuse", Value: float64Ptr(float64(m.MCacheInuse))},
-		{MType: gauge, ID: "MCacheSys", Value: float64Ptr(float64(m.MCacheSys))},
-		{MType: gauge, ID: "MSpanInuse", Value: float64Ptr(float64(m.MSpanInuse))},
-		{MType: gauge, ID: "MSpanSys", Value: float64Ptr(float64(m.MSpanSys))},
-		{MType: gauge, ID: "Mallocs", Value: float64Ptr(float64(m.Mallocs))},
-		{MType: gauge, ID: "NextGC", Value: float64Ptr(float64(m.NextGC))},
-		{MType: gauge, ID: "NumForcedGC", Value: float64Ptr(float64(m.NumForcedGC))},
-		{MType: gauge, ID: "NumGC", Value: float64Ptr(float64(m.NumGC))},
-		{MType: gauge, ID: "OtherSys", Value: float64Ptr(float64(m.GCSys))},
-		{MType: gauge, ID: "PauseTotalNs", Value: float64Ptr(float64(m.PauseTotalNs))},
-		{MType: gauge, ID: "StackInuse", Value: float64Ptr(float64(m.StackInuse))},
-		{MType: gauge, ID: "StackSys", Value: float64Ptr(float64(m.StackSys))},
-		{MType: gauge, ID: "Sys", Value: float64Ptr(float64(m.Sys))},
-		{MType: gauge, ID: "TotalAlloc", Value: float64Ptr(float64(m.TotalAlloc))},
-		{MType: gauge, ID: "RandomValue", Value: float64Ptr(rand.Float64())},
+		{MType: Gauge, ID: "Alloc", Value: float64Ptr(float64(m.Alloc))},
+		{MType: Gauge, ID: "BuckHashSys", Value: float64Ptr(float64(m.BuckHashSys))},
+		{MType: Gauge, ID: "Frees", Value: float64Ptr(float64(m.Frees))},
+		{MType: Gauge, ID: "GCCPUFraction", Value: float64Ptr(m.GCCPUFraction)},
+		{MType: Gauge, ID: "GCSys", Value: float64Ptr(float64(m.GCSys))},
+		{MType: Gauge, ID: "HeapAlloc", Value: float64Ptr(float64(m.HeapAlloc))},
+		{MType: Gauge, ID: "HeapIdle", Value: float64Ptr(float64(m.HeapIdle))},
+		{MType: Gauge, ID: "HeapInuse", Value: float64Ptr(float64(m.HeapInuse))},
+		{MType: Gauge, ID: "HeapObjects", Value: float64Ptr(float64(m.HeapObjects))},
+		{MType: Gauge, ID: "HeapReleased", Value: float64Ptr(float64(m.HeapReleased))},
+		{MType: Gauge, ID: "HeapSys", Value: float64Ptr(float64(m.HeapSys))},
+		{MType: Gauge, ID: "LastGC", Value: float64Ptr(float64(m.LastGC))},
+		{MType: Gauge, ID: "Lookups", Value: float64Ptr(float64(m.Lookups))},
+		{MType: Gauge, ID: "MCacheInuse", Value: float64Ptr(float64(m.MCacheInuse))},
+		{MType: Gauge, ID: "MCacheSys", Value: float64Ptr(float64(m.MCacheSys))},
+		{MType: Gauge, ID: "MSpanInuse", Value: float64Ptr(float64(m.MSpanInuse))},
+		{MType: Gauge, ID: "MSpanSys", Value: float64Ptr(float64(m.MSpanSys))},
+		{MType: Gauge, ID: "Mallocs", Value: float64Ptr(float64(m.Mallocs))},
+		{MType: Gauge, ID: "NextGC", Value: float64Ptr(float64(m.NextGC))},
+		{MType: Gauge, ID: "NumForcedGC", Value: float64Ptr(float64(m.NumForcedGC))},
+		{MType: Gauge, ID: "NumGC", Value: float64Ptr(float64(m.NumGC))},
+		{MType: Gauge, ID: "OtherSys", Value: float64Ptr(float64(m.GCSys))},
+		{MType: Gauge, ID: "PauseTotalNs", Value: float64Ptr(float64(m.PauseTotalNs))},
+		{MType: Gauge, ID: "StackInuse", Value: float64Ptr(float64(m.StackInuse))},
+		{MType: Gauge, ID: "StackSys", Value: float64Ptr(float64(m.StackSys))},
+		{MType: Gauge, ID: "Sys", Value: float64Ptr(float64(m.Sys))},
+		{MType: Gauge, ID: "TotalAlloc", Value: float64Ptr(float64(m.TotalAlloc))},
+		{MType: Gauge, ID: "RandomValue", Value: float64Ptr(rand.Float64())},
 	}
 }
