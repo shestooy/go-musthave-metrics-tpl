@@ -1,8 +1,6 @@
 package agent
 
 import (
-	"encoding/json"
-	"errors"
 	m "github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent/metrics"
 	f "github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	"log"
@@ -13,34 +11,28 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func postMetrics(url string, metrics []m.Metric) error {
+func postMetrics(url string, metrics []m.Metric) {
 	client := resty.New()
 	url, _ = strings.CutPrefix(url, "http://")
 
 	for _, metric := range metrics {
-		metricJSON, err := json.Marshal(metric)
-		if err != nil {
-			log.Printf("error serializing metric: %s. Name metric: %s", err, metric.ID)
-			return err
-		}
 		resp, err := client.R().SetHeader("Content-Type", "application/json").
-			SetBody(metricJSON).Post("http://" + url + "/update/")
+			SetBody(&metric).Post("http://" + url + "/update/")
 
 		if err != nil {
 			log.Printf("error send request: %s. Name metric: %s", err, metric.ID)
-			return err
+			continue
 		}
 
 		if resp.StatusCode() != http.StatusOK {
 			log.Printf("unexpected status code. Expected code 200, got %d. Name metric: %s", resp.StatusCode(), metric.ID)
-			return errors.New("unexpected status code")
+			continue
 		}
 	}
 	m.PollCount = 0
-	return nil
 }
 
-func Start() error {
+func Start() {
 	pollTicker := time.NewTicker(time.Duration(f.PollInterval) * time.Second)
 	defer pollTicker.Stop()
 
@@ -57,10 +49,7 @@ func Start() error {
 
 		case <-reportTicker.C:
 			metrics = append(metrics, m.Metric{MType: m.Counter, ID: "PollCount", Delta: &m.PollCount})
-			err := postMetrics(f.AgentEndPoint, metrics)
-			if err != nil {
-				return err
-			}
+			postMetrics(f.AgentEndPoint, metrics)
 			metrics = make([]m.Metric, 0)
 		}
 	}

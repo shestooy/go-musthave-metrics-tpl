@@ -12,8 +12,5 @@ func main() {
 		log.Fatal("parse flag for agent failed")
 	}
 
-	err = a.Start()
-	if err != nil {
-		log.Fatal("send metrics failed")
-	}
+	a.Start()
 }
