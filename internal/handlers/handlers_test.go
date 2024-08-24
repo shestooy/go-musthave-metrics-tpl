@@ -34,7 +34,7 @@ func testServer() chi.Router {
 		r.Post("/{type}/{name}/{value}", PostMetrics)
 	})
 	r.Route("/value", func(r chi.Router) {
-		r.Get("/", GetMetricIDWithJSON)
+		r.Post("/", GetMetricIDWithJSON)
 		r.Get("/{type}/{name}", GetMetricID)
 	})
 	return r
@@ -195,8 +195,8 @@ func TestGetMetricIDWithJSON(t *testing.T) {
 		expectedBody string
 	}{
 		{
-			name:         "method_post",
-			method:       http.MethodPost,
+			name:         "method_get",
+			method:       http.MethodGet,
 			expectedCode: http.StatusMethodNotAllowed,
 			expectedBody: "",
 		},
@@ -214,20 +214,20 @@ func TestGetMetricIDWithJSON(t *testing.T) {
 		},
 		{
 			name:         "method_post_without_body",
-			method:       http.MethodGet,
+			method:       http.MethodPost,
 			expectedCode: http.StatusBadRequest,
 			expectedBody: "",
 		},
 		{
 			name:         "method_post_unsupported_type",
-			method:       http.MethodGet,
+			method:       http.MethodPost,
 			body:         `{"request": {"type": "idunno", "command": "do something"}, "version": "1.0"}`,
 			expectedCode: http.StatusNotFound,
 			expectedBody: "",
 		},
 		{
 			name:   "method_post_success",
-			method: http.MethodGet,
+			method: http.MethodPost,
 			body:   `{"id": "temperature","type": "counter"}`,
 
 			expectedCode: http.StatusOK,

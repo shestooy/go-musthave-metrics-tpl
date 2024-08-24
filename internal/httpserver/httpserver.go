@@ -38,7 +38,7 @@ func GetRouter() chi.Router {
 	})
 
 	r.Route("/value", func(r chi.Router) {
-		r.Get("/", handlers.GetMetricIDWithJSON)
+		r.Post("/", handlers.GetMetricIDWithJSON)
 		r.Get("/{type}/{name}", handlers.GetMetricID)
 	})
 
