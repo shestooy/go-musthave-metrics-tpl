@@ -11,15 +11,15 @@ type IModel interface {
 	Init()
 	UpdateMetric(t, k, v string) error
 	GetMetricID(t, n string) (interface{}, error)
-	GetAllMetrics() map[string]types.Metrics
+	GetAllMetrics() map[string]types.Types
 }
 
 type Storage struct {
-	Metrics map[string]types.Metrics
+	Metrics map[string]types.Types
 }
 
 func (m *Storage) Init() {
-	m.Metrics = make(map[string]types.Metrics)
+	m.Metrics = make(map[string]types.Types)
 	m.Metrics["gauge"] = &types.Gauge{}
 	m.Metrics["gauge"].Init()
 	m.Metrics["counter"] = &types.Counter{}
@@ -48,6 +48,6 @@ func (m *Storage) GetMetricID(t, n string) (interface{}, error) {
 	return value, nil
 }
 
-func (m *Storage) GetAllMetrics() map[string]types.Metrics {
+func (m *Storage) GetAllMetrics() map[string]types.Types {
 	return m.Metrics
 }
