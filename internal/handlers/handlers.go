@@ -48,6 +48,10 @@ func PostMetricsWithJSON(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Println(err.Error())
 	}
+	err = req.Body.Close()
+	if err != nil {
+		log.Println(err.Error())
+	}
 }
 
 func PostMetrics(res http.ResponseWriter, req *http.Request) {
@@ -98,6 +102,10 @@ func GetMetricIDWithJSON(res http.ResponseWriter, req *http.Request) {
 	}
 	res.WriteHeader(http.StatusOK)
 	_, err = res.Write(resp)
+	if err != nil {
+		log.Println(err.Error())
+	}
+	err = req.Body.Close()
 	if err != nil {
 		log.Println(err.Error())
 	}
