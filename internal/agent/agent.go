@@ -1,8 +1,8 @@
 package agent
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
 	m "github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent/metrics"
 	f "github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	"log"
@@ -18,19 +18,21 @@ func postMetrics(url string, metrics []m.Metric) error {
 	url, _ = strings.CutPrefix(url, "http://")
 
 	for _, metric := range metrics {
-		resp, err := client.R().SetPathParams(map[string]string{
-			"type":  metric.Type,
-			"name":  metric.Name,
-			"value": fmt.Sprintf("%v", metric.Value),
-		}).SetHeader("Content-Type", "text/plain").Post("http://" + url + "/update/{type}/{name}/{value}")
+		metricJSON, err := json.Marshal(metric)
+		if err != nil {
+			log.Printf("error serializing metric: %s. Name metric: %s", err, metric.ID)
+			return err
+		}
+		resp, err := client.R().SetHeader("Content-Type", "application/json").
+			SetBody(metricJSON).Post("http://" + url + "/update/")
 
 		if err != nil {
-			log.Printf("error send request: %s. Name metric: %s", err, metric.Name)
+			log.Printf("error send request: %s. Name metric: %s", err, metric.ID)
 			return err
 		}
 
 		if resp.StatusCode() != http.StatusOK {
-			log.Printf("unexpected status code. Expected code 200, got %d. Name metric: %s", resp.StatusCode(), metric.Name)
+			log.Printf("unexpected status code. Expected code 200, got %d. Name metric: %s", resp.StatusCode(), metric.ID)
 			return errors.New("unexpected status code")
 		}
 	}
@@ -50,9 +52,11 @@ func Start() error {
 	for {
 		select {
 		case <-pollTicker.C:
+			m.PollCount++
 			metrics = append(metrics, m.GetAllMetrics()...)
 
 		case <-reportTicker.C:
+			metrics = append(metrics, m.Metric{MType: "counter", ID: "PollCount", Delta: &m.PollCount})
 			err := postMetrics(f.AgentEndPoint, metrics)
 			if err != nil {
 				return err
