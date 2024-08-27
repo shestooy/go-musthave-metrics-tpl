@@ -111,28 +111,23 @@ func GzipMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		w := res
 
-		json := strings.Contains(req.Header.Get("Content-Type"), "application/json")
-		text := strings.Contains(req.Header.Get("Content-Type"), "text/html")
-
-		if json || text {
-			acceptEnc := req.Header.Get("Accept-Encoding")
-			if ok := strings.Contains(acceptEnc, "gzip"); ok {
-				cw := newCompressWriter(res)
-				w = cw
-				w.Header().Set("Content-Encoding", "gzip")
-				defer cw.Close()
-			}
-
-			if ok := strings.Contains(req.Header.Get("Content-Encoding"), "gzip"); ok {
-				cr, err := newCompressReader(req.Body)
-				if err != nil {
-					res.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-				req.Body = cr
-				defer cr.Close()
-			}
+		acceptEnc := req.Header.Get("Accept-Encoding")
+		if ok := strings.Contains(acceptEnc, "gzip"); ok {
+			cw := newCompressWriter(res)
+			w = cw
+			w.Header().Set("Content-Encoding", "gzip")
+			defer cw.Close()
 		}
+		if ok := strings.Contains(req.Header.Get("Content-Encoding"), "gzip"); ok {
+			cr, err := newCompressReader(req.Body)
+			if err != nil {
+				res.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			req.Body = cr
+			defer cr.Close()
+		}
+
 		next.ServeHTTP(w, req)
 	})
 }
