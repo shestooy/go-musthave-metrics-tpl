@@ -244,6 +244,7 @@ func TestGetMetricIDWithJSON(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedCode, resp.StatusCode, "unexpected response code")
 			err = resp.Body.Close()
+			require.NoError(t, err)
 		})
 	}
 }
