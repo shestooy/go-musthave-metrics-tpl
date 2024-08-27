@@ -1,6 +1,10 @@
 package metrics
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
+	"log"
 	"math/rand"
 	"runtime"
 )
@@ -55,4 +59,21 @@ func GetAllMetrics() []Metric {
 		{MType: Gauge, ID: "TotalAlloc", Value: float64Ptr(float64(m.TotalAlloc))},
 		{MType: Gauge, ID: "RandomValue", Value: float64Ptr(rand.Float64())},
 	}
+}
+
+func (m *Metric) Compress() []byte {
+	var buf bytes.Buffer
+
+	w := gzip.NewWriter(&buf)
+
+	err := json.NewEncoder(w).Encode(m)
+	if err != nil {
+		log.Printf("error encoding metric: %s. Name metric: %s", err, m.ID)
+		return nil
+	}
+	if err = w.Close(); err != nil {
+		log.Printf("error closing gzip writer: %s. Name metric: %s", err, m.ID)
+		return nil
+	}
+	return buf.Bytes()
 }
