@@ -10,6 +10,9 @@ import (
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"go.uber.org/zap"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -17,18 +20,40 @@ func Start() error {
 	if err := l.Initialize(f.LogLevel); err != nil {
 		return err
 	}
+
 	if err := storage.MStorage.Init(); err != nil {
 		l.Log.Info("Error init storage", zap.Error(err))
 		return err
 	}
+
 	go startSaveMetrics()
+
 	l.Log.Info("Running server", zap.String("address", f.ServerEndPoint))
 
-	err := http.ListenAndServe(f.ServerEndPoint, GetRouter())
-	if err != nil {
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	serverErr := make(chan error, 1)
+	go func() {
+		serverErr <- http.ListenAndServe(f.ServerEndPoint, GetRouter())
+	}()
+
+	select {
+	case err := <-serverErr:
+		if err != nil {
+			return err
+		}
+	case <-stop:
+		l.Log.Info("Shutting down...")
+	}
+
+	if err := storage.MStorage.WriteInFile(); err != nil {
+		l.Log.Error("error write metrics in file", zap.Error(err))
 		return err
 	}
-	return storage.MStorage.WriteInFile()
+
+	l.Log.Info("server shutdown complete")
+	return nil
 }
 
 func GetRouter() chi.Router {
