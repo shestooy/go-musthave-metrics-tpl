@@ -2,12 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/go-chi/chi/v5"
-	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
-	"go.uber.org/zap"
 	"html/template"
 	"log"
 	"net/http"
@@ -96,7 +93,6 @@ func GetMetricIDWithJSON(res http.ResponseWriter, req *http.Request) {
 	}
 	metric, err := storage.MStorage.GetMetricID(m.ID)
 	if err != nil {
-		l.Log.Info("error", zap.String("err", fmt.Sprintf("%s %s %s", m.MType, m.ID, m.GetValueAsString())))
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return
 	}

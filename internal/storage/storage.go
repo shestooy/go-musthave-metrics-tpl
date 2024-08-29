@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
-	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
-	"go.uber.org/zap"
 	"os"
 	"sync"
 )
@@ -46,8 +44,6 @@ func (m *Storage) GetMetricID(id string) (model.Metrics, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	if _, ok := m.Metrics[id]; !ok {
-		l.Log.Info("ok", zap.Bool("ok", ok))
-		l.Log.Info("storage", zap.Any("stor", m.GetAllMetrics()))
 		return model.Metrics{}, errors.New("non correct type of metric")
 	}
 	return m.Metrics[id], nil

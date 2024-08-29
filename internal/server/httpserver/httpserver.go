@@ -24,7 +24,11 @@ func Start() error {
 	go startSaveMetrics()
 	l.Log.Info("Running server", zap.String("address", f.ServerEndPoint))
 
-	return http.ListenAndServe(f.ServerEndPoint, GetRouter())
+	err := http.ListenAndServe(f.ServerEndPoint, GetRouter())
+	if err != nil {
+		return err
+	}
+	return storage.MStorage.WriteInFile()
 }
 
 func GetRouter() chi.Router {
