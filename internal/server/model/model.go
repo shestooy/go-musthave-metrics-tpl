@@ -9,7 +9,7 @@ type Metrics struct {
 	Value *float64 `json:"value,omitempty"`
 }
 
-func (m *Metrics) GetValue() string {
+func (m *Metrics) GetValueAsString() string {
 	switch m.MType {
 	case "gauge":
 		if m.Value == nil {
@@ -25,25 +25,26 @@ func (m *Metrics) GetValue() string {
 	return ""
 }
 
-func (m *Metrics) SetValue(v interface{}) {
+func (m *Metrics) SetValue(v string) error {
 	switch m.MType {
 	case "gauge":
-		val, ok := v.(float64)
-		if !ok {
-			return
+		val, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			return err
 		}
 		if m.Value == nil {
 			m.Value = new(float64)
 		}
 		*m.Value = val
 	case "counter":
-		val, ok := v.(int64)
-		if !ok {
-			return
+		val, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return err
 		}
 		if m.Delta == nil {
 			m.Delta = new(int64)
 		}
 		*m.Delta = val
 	}
+	return nil
 }

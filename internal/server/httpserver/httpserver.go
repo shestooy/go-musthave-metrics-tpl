@@ -1,23 +1,27 @@
 package httpserver
 
 import (
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	f "github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/handlers"
 	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/middlewares"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/handlers"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/middlewares"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"go.uber.org/zap"
 	"net/http"
-
-	"github.com/go-chi/chi/v5"
+	"time"
 )
 
 func Start() error {
-	storage.MStorage.Init()
 	if err := l.Initialize(f.LogLevel); err != nil {
 		return err
 	}
+	if err := storage.MStorage.Init(); err != nil {
+		l.Log.Info("Error init storage", zap.Error(err))
+		return err
+	}
+	go startSaveMetrics()
 	l.Log.Info("Running server", zap.String("address", f.ServerEndPoint))
 
 	return http.ListenAndServe(f.ServerEndPoint, GetRouter())
@@ -44,4 +48,18 @@ func GetRouter() chi.Router {
 	})
 
 	return r
+}
+
+func startSaveMetrics() {
+	if f.StorageInterval > 0 {
+		ticker := time.NewTicker(time.Duration(f.StorageInterval) * time.Second)
+		defer ticker.Stop()
+		go func() {
+			for range ticker.C {
+				if err := storage.MStorage.WriteInFile(); err != nil {
+					l.Log.Info("error saving metrics", zap.Error(err))
+				}
+			}
+		}()
+	}
 }

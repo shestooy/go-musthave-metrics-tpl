@@ -3,8 +3,9 @@ package middlewares
 import (
 	"bytes"
 	"compress/gzip"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/handlers"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/handlers"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,7 +41,10 @@ func TestLoggingMiddleware(t *testing.T) {
 }
 
 func TestGzipCompression(t *testing.T) {
-	storage.MStorage.Init()
+	err := storage.MStorage.Init()
+	require.NoError(t, err)
+	flags.Restore = false
+	flags.StorageInterval = 5000
 	handler := GzipMiddleware(http.HandlerFunc(handlers.PostMetricsWithJSON))
 
 	srv := httptest.NewServer(handler)

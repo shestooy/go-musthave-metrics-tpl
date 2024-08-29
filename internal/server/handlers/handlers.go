@@ -2,9 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/model"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"html/template"
 	"log"
@@ -18,28 +17,26 @@ func PostMetricsWithJSON(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var m = &model.Metrics{}
-	if err := json.NewDecoder(req.Body).Decode(m); err != nil {
+	var m = model.Metrics{}
+	if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
 		http.Error(res, "bad request", http.StatusBadRequest)
 		return
 	}
 
-	err := storage.MStorage.UpdateMetric(m.MType, m.ID, m.GetValue())
+	err := storage.MStorage.UpdateMetric(m)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	val, err := storage.MStorage.GetMetricID(m.MType, m.ID)
+	m, err = storage.MStorage.GetMetricID(m.ID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	m.SetValue(val)
-
 	res.Header().Set("Content-Type", "application/json")
-	resp, err := json.Marshal(m)
+	resp, err := json.Marshal(&m)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -67,8 +64,16 @@ func PostMetrics(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-
-	err := storage.MStorage.UpdateMetric(params[0], params[1], params[2])
+	var m = model.Metrics{
+		MType: params[0],
+		ID:    params[1],
+	}
+	err := m.SetValue(params[2])
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = storage.MStorage.UpdateMetric(m)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
@@ -81,21 +86,19 @@ func GetMetricIDWithJSON(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "bad request", http.StatusBadRequest)
 		return
 	}
-	var m = &model.Metrics{}
-	if err := json.NewDecoder(req.Body).Decode(m); err != nil {
+	var m = model.Metrics{}
+	if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
 		http.Error(res, "bad request", http.StatusBadRequest)
 		return
 	}
-	val, err := storage.MStorage.GetMetricID(m.MType, m.ID)
+	m, err := storage.MStorage.GetMetricID(m.ID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	m.SetValue(val)
-
 	res.Header().Set("Content-Type", "application/json")
-	resp, err := json.Marshal(m)
+	resp, err := json.Marshal(&m)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -122,14 +125,13 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	value, err := storage.MStorage.GetMetricID(params[0], params[1])
+	m, err := storage.MStorage.GetMetricID(params[1])
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return
 	}
-	ans := fmt.Sprintf("%v", value)
 	res.Header().Set("Content-Type", "text/plain")
-	_, err = res.Write([]byte(ans))
+	_, err = res.Write([]byte(m.GetValueAsString()))
 	if err != nil {
 		log.Println(err.Error())
 	}
@@ -137,6 +139,19 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 
 func GetAllMetrics(res http.ResponseWriter, _ *http.Request) {
 	metrics := storage.MStorage.GetAllMetrics()
+
+	counters := make(map[string]model.Metrics)
+	gauges := make(map[string]model.Metrics)
+
+	for id, metric := range metrics {
+		if metric.MType == "counter" {
+			counters[id] = metric
+		}
+		if metric.MType == "gauge" {
+			gauges[id] = metric
+		}
+	}
+
 	res.Header().Set("Content-Type", "text/html; charset=utf-8")
 	tmp := `
 		<!DOCTYPE html>
@@ -153,10 +168,10 @@ func GetAllMetrics(res http.ResponseWriter, _ *http.Request) {
 					<th>Name</th>
 					<th>Value</th>
 				</tr>
-				{{ range $name, $value := .Counters }}
+				{{ range $name, $metric := .Counters }}
 				<tr>
 					<td>{{ $name }}</td>
-					<td>{{ $value }}</td>
+					<td>{{ GetValueAsString $metric }}</td>
 				</tr>
 				{{ end }}
 			</table>
@@ -167,10 +182,10 @@ func GetAllMetrics(res http.ResponseWriter, _ *http.Request) {
 					<th>Name</th>
 					<th>Value</th>
 				</tr>
-				{{ range $name, $value := .Gauges }}
+				{{ range $name, $metric := .Gauges }}
 				<tr>
 					<td>{{ $name }}</td>
-					<td>{{ $value }}</td>
+					<td>{{ GetValueAsString $metric }}</td>
 				</tr>
 				{{ end }}
 			</table>
@@ -179,18 +194,22 @@ func GetAllMetrics(res http.ResponseWriter, _ *http.Request) {
 		</html>
 		`
 
-	t, err := template.New("metrics").Parse(tmp)
+	t, err := template.New("metrics").
+		Funcs(template.FuncMap{"GetValueAsString": func(m model.Metrics) string {
+			return m.GetValueAsString()
+		},
+		}).Parse(tmp)
 	if err != nil {
 		http.Error(res, "не удалось создать шаблон", http.StatusInternalServerError)
 		return
 	}
 
 	data := struct {
-		Counters interface{}
-		Gauges   interface{}
+		Counters map[string]model.Metrics
+		Gauges   map[string]model.Metrics
 	}{
-		Counters: metrics["counter"].GetAllValue(),
-		Gauges:   metrics["gauge"].GetAllValue(),
+		Counters: counters,
+		Gauges:   gauges,
 	}
 
 	err = t.Execute(res, data)

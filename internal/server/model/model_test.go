@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMetrics_GetValue(t *testing.T) {
@@ -60,18 +61,17 @@ func TestMetrics_GetValue(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, tt.metric.GetValue())
+			assert.Equal(t, tt.expected, tt.metric.GetValueAsString())
 		})
 	}
 }
 
 func TestMetrics_SetValue(t *testing.T) {
 	tests := []struct {
-		name          string
-		metric        Metrics
-		valueToSet    interface{}
-		expectedVal   *float64
-		expectedDelta *int64
+		name       string
+		metric     Metrics
+		valueToSet string
+		expected   string
 	}{
 		{
 			name: "setGaugeValue",
@@ -79,8 +79,8 @@ func TestMetrics_SetValue(t *testing.T) {
 				ID:    "test_gauge",
 				MType: "gauge",
 			},
-			valueToSet:  42.42,
-			expectedVal: func() *float64 { v := 42.42; return &v }(),
+			valueToSet: "42.42",
+			expected:   "42.42",
 		},
 		{
 			name: "setCounterDelta",
@@ -88,8 +88,8 @@ func TestMetrics_SetValue(t *testing.T) {
 				ID:    "test_counter",
 				MType: "counter",
 			},
-			valueToSet:    int64(10),
-			expectedDelta: func() *int64 { d := int64(10); return &d }(),
+			valueToSet: "10",
+			expected:   "10",
 		},
 		{
 			name: "unsupportedMetricType",
@@ -97,7 +97,7 @@ func TestMetrics_SetValue(t *testing.T) {
 				ID:    "test_unsupported",
 				MType: "unsupported",
 			},
-			valueToSet: 42.42,
+			valueToSet: "42.42",
 		},
 		{
 			name: "setGaugeValueNil",
@@ -106,8 +106,8 @@ func TestMetrics_SetValue(t *testing.T) {
 				MType: "gauge",
 				Value: nil,
 			},
-			valueToSet:  42.42,
-			expectedVal: func() *float64 { v := 42.42; return &v }(),
+			valueToSet: "42.42",
+			expected:   "42.42",
 		},
 		{
 			name: "setCounterDeltaNil",
@@ -116,32 +116,17 @@ func TestMetrics_SetValue(t *testing.T) {
 				MType: "counter",
 				Delta: nil,
 			},
-			valueToSet:    int64(10),
-			expectedDelta: func() *int64 { d := int64(10); return &d }(),
+			valueToSet: "10",
+			expected:   "10",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.metric.SetValue(tt.valueToSet)
+			err := tt.metric.SetValue(tt.valueToSet)
+			require.NoError(t, err)
 
-			switch tt.metric.MType {
-			case "gauge":
-				if tt.expectedVal != nil {
-					assert.NotNil(t, tt.metric.Value)
-					assert.Equal(t, *tt.expectedVal, *tt.metric.Value)
-				} else {
-					assert.Nil(t, tt.metric.Value)
-				}
-
-			case "counter":
-				if tt.expectedDelta != nil {
-					assert.NotNil(t, tt.metric.Delta)
-					assert.Equal(t, *tt.expectedDelta, *tt.metric.Delta)
-				} else {
-					assert.Nil(t, tt.metric.Delta)
-				}
-			}
+			assert.Equal(t, tt.expected, tt.metric.GetValueAsString())
 
 		})
 	}

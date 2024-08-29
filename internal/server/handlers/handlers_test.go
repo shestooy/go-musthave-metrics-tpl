@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"net/http"
 	"net/http/httptest"
@@ -24,8 +25,13 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) int {
 }
 
 // взять функцию getRouter из httpserver мешает цикличный импорт
-func testServer() chi.Router {
-	storage.MStorage.Init()
+func testServer(t *testing.T) chi.Router {
+	flags.Restore = false
+	flags.StorageInterval = 5000
+
+	err := storage.MStorage.Init()
+	require.NoError(t, err)
+
 	r := chi.NewRouter()
 
 	r.Get("/", GetAllMetrics)
@@ -41,7 +47,7 @@ func testServer() chi.Router {
 }
 
 func TestChangeMetric(t *testing.T) {
-	ts := httptest.NewServer(testServer())
+	ts := httptest.NewServer(testServer(t))
 	defer ts.Close()
 	tests := []struct {
 		name         string
@@ -63,7 +69,7 @@ func TestChangeMetric(t *testing.T) {
 }
 
 func TestGetMetricID(t *testing.T) {
-	ts := httptest.NewServer(testServer())
+	ts := httptest.NewServer(testServer(t))
 	defer ts.Close()
 	tests := []struct {
 		name         string
@@ -85,7 +91,7 @@ func TestGetMetricID(t *testing.T) {
 }
 
 func TestGetAllMetrics(t *testing.T) {
-	ts := httptest.NewServer(testServer())
+	ts := httptest.NewServer(testServer(t))
 	defer ts.Close()
 	tests := []struct {
 		name         string
@@ -106,7 +112,7 @@ func TestGetAllMetrics(t *testing.T) {
 }
 
 func TestPostMetricsWithJSON(t *testing.T) {
-	ts := httptest.NewServer(testServer())
+	ts := httptest.NewServer(testServer(t))
 	defer ts.Close()
 
 	tests := []struct {
@@ -173,7 +179,7 @@ func TestPostMetricsWithJSON(t *testing.T) {
 }
 
 func TestGetMetricIDWithJSON(t *testing.T) {
-	ts := httptest.NewServer(testServer())
+	ts := httptest.NewServer(testServer(t))
 	defer ts.Close()
 
 	prepReq, err := http.NewRequest(http.MethodPost, ts.URL+"/update/",
