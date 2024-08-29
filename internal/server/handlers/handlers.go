@@ -96,7 +96,7 @@ func GetMetricIDWithJSON(res http.ResponseWriter, req *http.Request) {
 	}
 	metric, err := storage.MStorage.GetMetricID(m.ID)
 	if err != nil {
-		l.Log.Info("error", zap.String("err", fmt.Sprintf("%s %s %s", m.MType)))
+		l.Log.Info("error", zap.String("err", fmt.Sprintf("%s %s %s", m.MType, m.ID, m.GetValueAsString())))
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return
 	}
