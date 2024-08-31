@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	f "github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
@@ -26,7 +27,10 @@ func Start() error {
 		return err
 	}
 
-	go startSaveMetrics()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go startSaveMetrics(ctx)
 
 	l.Log.Info("Running server", zap.String("address", f.ServerEndPoint))
 
@@ -45,6 +49,7 @@ func Start() error {
 		}
 	case <-stop:
 		l.Log.Info("Shutting down...")
+		cancel()
 	}
 
 	if err := storage.MStorage.WriteInFile(); err != nil {
@@ -79,16 +84,20 @@ func GetRouter() chi.Router {
 	return r
 }
 
-func startSaveMetrics() {
+func startSaveMetrics(ctx context.Context) {
 	if f.StorageInterval > 0 {
 		ticker := time.NewTicker(time.Duration(f.StorageInterval) * time.Second)
 		defer ticker.Stop()
-		go func() {
-			for range ticker.C {
+
+		for {
+			select {
+			case <-ticker.C:
 				if err := storage.MStorage.WriteInFile(); err != nil {
 					l.Log.Info("error saving metrics", zap.Error(err))
 				}
+			case <-ctx.Done():
+				return
 			}
-		}()
+		}
 	}
 }
