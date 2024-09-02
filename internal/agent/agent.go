@@ -16,10 +16,15 @@ func postMetrics(url string, metrics []m.Metric) {
 	url, _ = strings.CutPrefix(url, "http://")
 
 	for _, metric := range metrics {
+		body, err := metric.Compress()
+		if err != nil {
+			log.Printf("error compress procedure. Err : %s", err.Error())
+			continue
+		}
 		resp, err := client.R().
 			SetHeader("Content-Type", "application/json").
 			SetHeader("Content-Encoding", "gzip").
-			SetBody(metric.Compress()).
+			SetBody(body).
 			Post("http://" + url + "/update/")
 
 		if err != nil {

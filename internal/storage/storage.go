@@ -1,53 +1,99 @@
 package storage
 
 import (
+	"bufio"
+	"encoding/json"
 	"errors"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage/types"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
+	"os"
+	"sync"
 )
 
 var MStorage = Storage{}
 
-type IModel interface {
-	Init()
-	UpdateMetric(t, k, v string) error
-	GetMetricID(t, n string) (interface{}, error)
-	GetAllMetrics() map[string]types.Types
-}
-
 type Storage struct {
-	Metrics map[string]types.Types
+	Metrics map[string]model.Metrics
+	mu      sync.RWMutex
 }
 
-func (m *Storage) Init() {
-	m.Metrics = make(map[string]types.Types)
-	m.Metrics["gauge"] = &types.Gauge{}
-	m.Metrics["gauge"].Init()
-	m.Metrics["counter"] = &types.Counter{}
-	m.Metrics["counter"].Init()
+func (m *Storage) Init() error {
+	m.Metrics = make(map[string]model.Metrics)
+	return m.restore()
 }
 
-func (m *Storage) UpdateMetric(t, k, v string) error {
-	if _, ok := m.Metrics[t]; !ok {
+func (m *Storage) UpdateMetric(metric model.Metrics) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if metric.MType != "gauge" && metric.MType != "counter" {
 		return errors.New("non correct type of metric")
 	}
-	err := m.Metrics[t].AddValue(k, v)
-	if err != nil {
-		return err
+
+	if _, ok := m.Metrics[metric.ID]; metric.MType == "counter" && ok {
+		*m.Metrics[metric.ID].Delta += *metric.Delta
+		return nil
+	}
+	m.Metrics[metric.ID] = metric
+	if flags.StorageInterval == 0 {
+		return m.WriteInFile()
 	}
 	return nil
 }
 
-func (m *Storage) GetMetricID(t, n string) (interface{}, error) {
-	if _, ok := m.Metrics[t]; !ok {
-		return 0, errors.New("non correct type of metric")
+func (m *Storage) GetMetricID(id string) (model.Metrics, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if _, ok := m.Metrics[id]; !ok {
+		return model.Metrics{}, errors.New("non correct type of metric")
 	}
-	value, err := m.Metrics[t].GetValueID(n)
-	if err != nil {
-		return value, err
-	}
-	return value, nil
+	return m.Metrics[id], nil
 }
 
-func (m *Storage) GetAllMetrics() map[string]types.Types {
+func (m *Storage) GetAllMetrics() map[string]model.Metrics {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.Metrics
+}
+
+func (m *Storage) restore() error {
+	if !flags.Restore {
+		return nil
+	}
+
+	f, err := os.OpenFile(flags.FileStoragePath, os.O_RDONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		var metric = &model.Metrics{}
+		if err = json.Unmarshal(scanner.Bytes(), &metric); err != nil {
+			return err
+		}
+		err = m.UpdateMetric(*metric)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *Storage) WriteInFile() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	f, err := os.OpenFile(flags.FileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	enc := json.NewEncoder(f)
+	for _, metric := range m.Metrics {
+		if err = enc.Encode(metric); err != nil {
+			return err
+		}
+	}
+	return nil
 }

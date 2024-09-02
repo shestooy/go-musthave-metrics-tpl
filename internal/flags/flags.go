@@ -7,13 +7,21 @@ import (
 )
 
 var (
-	ServerEndPoint string
-	LogLevel       string
+	ServerEndPoint  string
+	LogLevel        string
+	StorageInterval int64
+	FileStoragePath string
+	Restore         bool
 )
 
-func ParseServerFlags() {
+func ParseServerFlags() error {
+	var err error
+
 	flag.StringVar(&ServerEndPoint, "a", "localhost:8080", "address and port to run server")
 	flag.StringVar(&LogLevel, "l", "info", "log level")
+	flag.Int64Var(&StorageInterval, "i", 300, "the time interval in seconds for saving metrics to disk")
+	flag.StringVar(&FileStoragePath, "f", "metric.txt", "the path to the file for storing metrics")
+	flag.BoolVar(&Restore, "r", true, "whether to load saved metrics at startup")
 	flag.Parse()
 
 	if envServerEndPoint := os.Getenv("ADDRESS"); envServerEndPoint != "" {
@@ -22,6 +30,22 @@ func ParseServerFlags() {
 	if envFlagLogLevel := os.Getenv("LOG_LEVEL"); envFlagLogLevel != "" {
 		ServerEndPoint = envFlagLogLevel
 	}
+	if envStorageInterval := os.Getenv("STORE_INTERVAL"); envStorageInterval != "" {
+		StorageInterval, err = strconv.ParseInt(envStorageInterval, 10, 64)
+		if err != nil {
+			return err
+		}
+	}
+	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
+		FileStoragePath = envFileStoragePath
+	}
+	if envRestore := os.Getenv("RESTORE"); envRestore != "" {
+		Restore, err = strconv.ParseBool(envRestore)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 var (
