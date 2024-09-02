@@ -9,10 +9,11 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strings"
 )
 
 func PostMetricsWithJSON(res http.ResponseWriter, req *http.Request) {
-	if req.Header.Get("Content-Type") != "application/json" {
+	if !strings.Contains(req.Header.Get("Content-Type"), "application/json") {
 		http.Error(res, "bad request", http.StatusBadRequest)
 		return
 	}
@@ -76,11 +77,10 @@ func PostMetrics(res http.ResponseWriter, req *http.Request) {
 }
 
 func GetMetricIDWithJSON(res http.ResponseWriter, req *http.Request) {
-	if req.Header.Get("Content-Type") != "application/json" {
+	if !strings.Contains(req.Header.Get("Content-Type"), "application/json") {
 		http.Error(res, "bad request", http.StatusBadRequest)
 		return
 	}
-
 	var m = &model.Metrics{}
 	if err := json.NewDecoder(req.Body).Decode(m); err != nil {
 		http.Error(res, "bad request", http.StatusBadRequest)
@@ -137,7 +137,7 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 
 func GetAllMetrics(res http.ResponseWriter, _ *http.Request) {
 	metrics := storage.MStorage.GetAllMetrics()
-
+	res.Header().Set("Content-Type", "text/html; charset=utf-8")
 	tmp := `
 		<!DOCTYPE html>
 		<html>

@@ -16,8 +16,11 @@ func postMetrics(url string, metrics []m.Metric) {
 	url, _ = strings.CutPrefix(url, "http://")
 
 	for _, metric := range metrics {
-		resp, err := client.R().SetHeader("Content-Type", "application/json").
-			SetBody(&metric).Post("http://" + url + "/update/")
+		resp, err := client.R().
+			SetHeader("Content-Type", "application/json").
+			SetHeader("Content-Encoding", "gzip").
+			SetBody(metric.Compress()).
+			Post("http://" + url + "/update/")
 
 		if err != nil {
 			log.Printf("error send request: %s. Name metric: %s", err, metric.ID)

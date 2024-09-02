@@ -78,6 +78,7 @@ func TestMemStorage_GetAllMetrics(t *testing.T) {
 		want   map[string]types.Types
 	}{
 		{
+
 			name: "TestStorageGetter",
 			values: map[string]types.Types{
 				"gauge":   &types.Gauge{Values: map[string]float64{"t1": 65.1}},

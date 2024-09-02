@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"github.com/go-chi/chi/v5/middleware"
 	f "github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/handlers"
 	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
@@ -10,7 +11,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 )
 
 func Start() error {
@@ -27,6 +27,7 @@ func GetRouter() chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(middlewares.LoggingMiddleware)
+	r.Use(middlewares.GzipMiddleware)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
 
