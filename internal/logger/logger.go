@@ -18,7 +18,7 @@ func Initialize(level string) error {
 	cfg.EncoderConfig.TimeKey = "time"
 
 	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-
+	cfg.EncoderConfig.EncodeDuration = zapcore.StringDurationEncoder
 	cfg.Level = lvl
 
 	zl, err := cfg.Build()

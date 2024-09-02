@@ -1,4 +1,4 @@
-package model
+package types
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-type Metrics interface {
+type Types interface {
 	AddValue(k, v string) error
 	Init()
 	GetValueID(n string) (interface{}, error)
@@ -32,6 +32,7 @@ func (g *Gauge) AddValue(k, v string) error {
 
 func (g *Gauge) Init() {
 	g.Values = make(map[string]float64)
+
 }
 
 func (g *Gauge) GetValueID(n string) (interface{}, error) {

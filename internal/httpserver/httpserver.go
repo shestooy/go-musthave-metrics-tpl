@@ -14,7 +14,7 @@ import (
 )
 
 func Start() error {
-	storage.Storage.Init()
+	storage.MStorage.Init()
 	if err := l.Initialize(f.LogLevel); err != nil {
 		return err
 	}
@@ -30,8 +30,17 @@ func GetRouter() chi.Router {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
 
-	r.Post("/update/{type}/{name}/{value}", handlers.PostMetrics)
-	r.Get("/value/{type}/{name}", handlers.GetMetricID)
 	r.Get("/", handlers.GetAllMetrics)
+
+	r.Route("/update", func(r chi.Router) {
+		r.Post("/", handlers.PostMetricsWithJSON)
+		r.Post("/{type}/{name}/{value}", handlers.PostMetrics)
+	})
+
+	r.Route("/value", func(r chi.Router) {
+		r.Post("/", handlers.GetMetricIDWithJSON)
+		r.Get("/{type}/{name}", handlers.GetMetricID)
+	})
+
 	return r
 }
