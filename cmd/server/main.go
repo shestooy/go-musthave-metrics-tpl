@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
+	f "github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	s "github.com/shestooy/go-musthave-metrics-tpl.git/internal/httpserver"
 )
 
 func main() {
-	flags.ParseServerFlags()
+	f.ParseServerFlags()
 
 	err := s.Start()
 	if err != nil {

@@ -1,14 +1,59 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/go-chi/chi/v5"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/model"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"html/template"
 	"log"
 	"net/http"
-
-	"github.com/go-chi/chi/v5"
+	"strings"
 )
+
+func PostMetricsWithJSON(res http.ResponseWriter, req *http.Request) {
+	if !strings.Contains(req.Header.Get("Content-Type"), "application/json") {
+		http.Error(res, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	var m = &model.Metrics{}
+	if err := json.NewDecoder(req.Body).Decode(m); err != nil {
+		http.Error(res, "bad request", http.StatusBadRequest)
+		return
+	}
+
+	err := storage.MStorage.UpdateMetric(m.MType, m.ID, m.GetValue())
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	val, err := storage.MStorage.GetMetricID(m.MType, m.ID)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	m.SetValue(val)
+
+	res.Header().Set("Content-Type", "application/json")
+	resp, err := json.Marshal(m)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res.WriteHeader(http.StatusOK)
+	_, err = res.Write(resp)
+	if err != nil {
+		log.Println(err.Error())
+	}
+	err = req.Body.Close()
+	if err != nil {
+		log.Println(err.Error())
+	}
+}
 
 func PostMetrics(res http.ResponseWriter, req *http.Request) {
 	params := make([]string, 3)
@@ -23,12 +68,47 @@ func PostMetrics(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	err := storage.Storage.UpdateMetric(params[0], params[1], params[2])
+	err := storage.MStorage.UpdateMetric(params[0], params[1], params[2])
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 	res.Header().Set("Content-Type", "text/plain")
+}
+
+func GetMetricIDWithJSON(res http.ResponseWriter, req *http.Request) {
+	if !strings.Contains(req.Header.Get("Content-Type"), "application/json") {
+		http.Error(res, "bad request", http.StatusBadRequest)
+		return
+	}
+	var m = &model.Metrics{}
+	if err := json.NewDecoder(req.Body).Decode(m); err != nil {
+		http.Error(res, "bad request", http.StatusBadRequest)
+		return
+	}
+	val, err := storage.MStorage.GetMetricID(m.MType, m.ID)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	m.SetValue(val)
+
+	res.Header().Set("Content-Type", "application/json")
+	resp, err := json.Marshal(m)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res.WriteHeader(http.StatusOK)
+	_, err = res.Write(resp)
+	if err != nil {
+		log.Println(err.Error())
+	}
+	err = req.Body.Close()
+	if err != nil {
+		log.Println(err.Error())
+	}
 }
 
 func GetMetricID(res http.ResponseWriter, req *http.Request) {
@@ -42,7 +122,7 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	value, err := storage.Storage.GetMetricID(params[0], params[1])
+	value, err := storage.MStorage.GetMetricID(params[0], params[1])
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return
@@ -56,8 +136,8 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 }
 
 func GetAllMetrics(res http.ResponseWriter, _ *http.Request) {
-	metrics := storage.Storage.GetAllMetrics()
-
+	metrics := storage.MStorage.GetAllMetrics()
+	res.Header().Set("Content-Type", "text/html; charset=utf-8")
 	tmp := `
 		<!DOCTYPE html>
 		<html>
