@@ -68,7 +68,7 @@ func TestStorage_GetAllMetrics(t *testing.T) {
 	metric1 := model.Metrics{
 		ID:    "test_gauge",
 		MType: "gauge",
-		Value: func(v float64) *float64 { return &v }(450.1),
+		Value: func(v float64) *float64 { return &v }(450.2),
 	}
 	metric2 := model.Metrics{
 		ID:    "test_counter",
