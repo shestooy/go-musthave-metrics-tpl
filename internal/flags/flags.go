@@ -6,14 +6,21 @@ import (
 	"strconv"
 )
 
-var ServerEndPoint string
+var (
+	ServerEndPoint string
+	LogLevel       string
+)
 
 func ParseServerFlags() {
 	flag.StringVar(&ServerEndPoint, "a", "localhost:8080", "address and port to run server")
+	flag.StringVar(&LogLevel, "l", "info", "log level")
 	flag.Parse()
 
 	if envServerEndPoint := os.Getenv("ADDRESS"); envServerEndPoint != "" {
 		ServerEndPoint = envServerEndPoint
+	}
+	if envFlagLogLevel := os.Getenv("LOG_LEVEL"); envFlagLogLevel != "" {
+		ServerEndPoint = envFlagLogLevel
 	}
 }
 
