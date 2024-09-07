@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"net/http"
@@ -29,7 +30,9 @@ func testServer(t *testing.T) chi.Router {
 	flags.Restore = false
 	flags.StorageInterval = 5000
 
-	err := storage.MStorage.Init()
+	storage.MStorage = &storage.Storage{}
+	err := storage.MStorage.Init(context.Background())
+
 	require.NoError(t, err)
 
 	r := chi.NewRouter()

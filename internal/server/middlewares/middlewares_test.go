@@ -3,6 +3,7 @@ package middlewares
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/handlers"
@@ -41,7 +42,8 @@ func TestLoggingMiddleware(t *testing.T) {
 }
 
 func TestGzipCompression(t *testing.T) {
-	err := storage.MStorage.Init()
+	storage.MStorage = &storage.Storage{}
+	err := storage.MStorage.Init(context.Background())
 	require.NoError(t, err)
 	flags.Restore = false
 	flags.StorageInterval = 5000

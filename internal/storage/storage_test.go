@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
 	"testing"
@@ -12,14 +13,16 @@ import (
 func TestMemStorage_Init(t *testing.T) {
 	flags.Restore = false
 	flags.StorageInterval = 5000
-	err := MStorage.Init()
+	MStorage = &Storage{}
+	err := MStorage.Init(context.Background())
 	require.NoError(t, err)
 }
 
 func TestStorage_UpdateMetric(t *testing.T) {
 	flags.Restore = false
 	flags.StorageInterval = 5000
-	err := MStorage.Init()
+	MStorage = &Storage{}
+	err := MStorage.Init(context.Background())
 	require.NoError(t, err)
 
 	metric := model.Metrics{
@@ -28,10 +31,10 @@ func TestStorage_UpdateMetric(t *testing.T) {
 		Value: func(v float64) *float64 { return &v }(10),
 	}
 
-	err = MStorage.UpdateMetric(metric)
+	err = MStorage.SaveMetric(context.Background(), metric)
 	assert.NoError(t, err)
 
-	storedMetric, err := MStorage.GetMetricID(metric.ID)
+	storedMetric, err := MStorage.GetByID(context.Background(), metric.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, metric, storedMetric)
 }
@@ -39,7 +42,8 @@ func TestStorage_UpdateMetric(t *testing.T) {
 func TestMemStorage_GetMetricID(t *testing.T) {
 	flags.Restore = false
 	flags.StorageInterval = 5000
-	err := MStorage.Init()
+	MStorage = &Storage{}
+	err := MStorage.Init(context.Background())
 	require.NoError(t, err)
 
 	metric := model.Metrics{
@@ -48,21 +52,22 @@ func TestMemStorage_GetMetricID(t *testing.T) {
 		Value: func(v float64) *float64 { return &v }(20),
 	}
 
-	err = MStorage.UpdateMetric(metric)
+	err = MStorage.SaveMetric(context.Background(), metric)
 	require.NoError(t, err)
 
-	retrievedMetric, err := MStorage.GetMetricID(metric.ID)
+	retrievedMetric, err := MStorage.GetByID(context.Background(), metric.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, metric, retrievedMetric)
 
-	_, err = MStorage.GetMetricID("testErr")
+	_, err = MStorage.GetByID(context.Background(), "testErr")
 	assert.Error(t, err)
 }
 
 func TestStorage_GetAllMetrics(t *testing.T) {
 	flags.Restore = false
 	flags.StorageInterval = 5000
-	err := MStorage.Init()
+	MStorage = &Storage{}
+	err := MStorage.Init(context.Background())
 	require.NoError(t, err)
 
 	metric1 := model.Metrics{
@@ -76,12 +81,13 @@ func TestStorage_GetAllMetrics(t *testing.T) {
 		Delta: func(v int64) *int64 { return &v }(432),
 	}
 
-	err = MStorage.UpdateMetric(metric1)
+	err = MStorage.SaveMetric(context.Background(), metric1)
 	require.NoError(t, err)
-	err = MStorage.UpdateMetric(metric2)
+	err = MStorage.SaveMetric(context.Background(), metric2)
 	require.NoError(t, err)
 
-	allMetrics := MStorage.GetAllMetrics()
+	allMetrics, err := MStorage.GetAllMetrics(context.Background())
+	require.NoError(t, err)
 	assert.Equal(t, 2, len(allMetrics))
 	assert.Contains(t, allMetrics, metric1.ID)
 	assert.Contains(t, allMetrics, metric2.ID)
