@@ -23,7 +23,7 @@ func ParseServerFlags() error {
 	flag.Int64Var(&StorageInterval, "i", 300, "the time interval in seconds for saving metrics to disk")
 	flag.StringVar(&FileStoragePath, "f", "metric.txt", "the path to the file for storing metrics")
 	flag.BoolVar(&Restore, "r", true, "whether to load saved metrics at startup")
-	flag.StringVar(&AddrDB, "d", "postgres://user:password@localhost:5432/test", "the address of the database")
+	flag.StringVar(&AddrDB, "d", "", "the address of the database")
 	flag.Parse()
 
 	if envServerEndPoint := os.Getenv("ADDRESS"); envServerEndPoint != "" {

@@ -2,27 +2,49 @@ package storage
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
+	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
+	"go.uber.org/zap"
 	"os"
 	"sync"
+	"time"
 )
 
-var MStorage = Storage{}
+var MStorage IStorage
+
+type IStorage interface {
+	Init(ctx context.Context) error
+	SaveMetric(ctx context.Context, m model.Metrics) error
+	GetAllMetrics(ctx context.Context) (map[string]model.Metrics, error)
+	GetByID(ctx context.Context, id string) (model.Metrics, error)
+	Ping(ctx context.Context) error
+	Close()
+}
 
 type Storage struct {
 	Metrics map[string]model.Metrics
 	mu      sync.RWMutex
 }
 
-func (m *Storage) Init() error {
+func (m *Storage) Init(ctx context.Context) error {
 	m.Metrics = make(map[string]model.Metrics)
-	return m.restore()
+
+	go startSaveMetrics(ctx, m)
+
+	return m.restore(ctx)
 }
 
-func (m *Storage) UpdateMetric(metric model.Metrics) error {
+func (m *Storage) SaveMetric(ctx context.Context, metric model.Metrics) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if metric.MType != "gauge" && metric.MType != "counter" {
@@ -35,12 +57,18 @@ func (m *Storage) UpdateMetric(metric model.Metrics) error {
 	}
 	m.Metrics[metric.ID] = metric
 	if flags.StorageInterval == 0 {
-		return m.WriteInFile()
+		return WriteInFile(ctx, m)
 	}
 	return nil
 }
 
-func (m *Storage) GetMetricID(id string) (model.Metrics, error) {
+func (m *Storage) GetByID(ctx context.Context, id string) (model.Metrics, error) {
+	select {
+	case <-ctx.Done():
+		return model.Metrics{}, ctx.Err()
+	default:
+	}
+
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	if _, ok := m.Metrics[id]; !ok {
@@ -49,13 +77,19 @@ func (m *Storage) GetMetricID(id string) (model.Metrics, error) {
 	return m.Metrics[id], nil
 }
 
-func (m *Storage) GetAllMetrics() map[string]model.Metrics {
+func (m *Storage) GetAllMetrics(_ context.Context) (map[string]model.Metrics, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.Metrics
+	return m.Metrics, nil
 }
 
-func (m *Storage) restore() error {
+func (m *Storage) restore(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	if !flags.Restore {
 		return nil
 	}
@@ -72,7 +106,7 @@ func (m *Storage) restore() error {
 		if err = json.Unmarshal(scanner.Bytes(), &metric); err != nil {
 			return err
 		}
-		err = m.UpdateMetric(*metric)
+		err = m.SaveMetric(ctx, *metric)
 		if err != nil {
 			return err
 		}
@@ -80,7 +114,13 @@ func (m *Storage) restore() error {
 	return nil
 }
 
-func (m *Storage) WriteInFile() error {
+func WriteInFile(ctx context.Context, m *Storage) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -96,4 +136,33 @@ func (m *Storage) WriteInFile() error {
 		}
 	}
 	return nil
+}
+
+func (m *Storage) Ping(_ context.Context) error {
+	return errors.New("not supported")
+}
+
+func (m *Storage) Close() {
+	if err := WriteInFile(context.Background(), m); err != nil {
+		l.Log.Info("error saving metrics", zap.Error(err))
+	}
+	l.Log.Info("Last save in file complete")
+}
+
+func startSaveMetrics(ctx context.Context, m *Storage) {
+	if flags.StorageInterval > 0 {
+		ticker := time.NewTicker(time.Duration(flags.StorageInterval) * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				if err := WriteInFile(ctx, m); err != nil {
+					l.Log.Info("error saving metrics", zap.Error(err))
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
 }

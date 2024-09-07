@@ -14,7 +14,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 func Start() error {
@@ -25,16 +24,9 @@ func Start() error {
 		return err
 	}
 
-	if err := storage.InitDB(ctx); err != nil {
-		l.Log.Info("Error init DB", zap.Error(err))
+	if err := initializeStorage(ctx); err != nil {
+		l.Log.Info("Error init Storage", zap.Error(err))
 	}
-
-	if err := storage.MStorage.Init(); err != nil {
-		l.Log.Info("Error init storage", zap.Error(err))
-		return err
-	}
-
-	go startSaveMetrics(ctx)
 
 	l.Log.Info("Running server", zap.String("address", f.ServerEndPoint))
 
@@ -56,12 +48,9 @@ func Start() error {
 		cancel()
 	}
 
-	if err := storage.MStorage.WriteInFile(); err != nil {
-		l.Log.Error("error write metrics in file", zap.Error(err))
-		return err
-	}
+	storage.MStorage.Close()
 
-	l.Log.Info("server shutdown complete")
+	l.Log.Info("Server shutdown complete")
 	return nil
 }
 
@@ -89,20 +78,15 @@ func GetRouter() chi.Router {
 	return r
 }
 
-func startSaveMetrics(ctx context.Context) {
-	if f.StorageInterval > 0 {
-		ticker := time.NewTicker(time.Duration(f.StorageInterval) * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				if err := storage.MStorage.WriteInFile(); err != nil {
-					l.Log.Info("error saving metrics", zap.Error(err))
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
+func initializeStorage(ctx context.Context) error {
+	if f.AddrDB == "" {
+		storage.MStorage = &storage.Storage{}
+	} else {
+		storage.MStorage = &storage.DB{}
 	}
+	err := storage.MStorage.Init(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
 }

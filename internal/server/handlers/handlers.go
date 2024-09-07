@@ -23,13 +23,13 @@ func PostMetricsWithJSON(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err := storage.MStorage.UpdateMetric(m)
+	err := storage.MStorage.SaveMetric(req.Context(), m)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	m, err = storage.MStorage.GetMetricID(m.ID)
+	m, err = storage.MStorage.GetByID(req.Context(), m.ID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return
@@ -73,7 +73,7 @@ func PostMetrics(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = storage.MStorage.UpdateMetric(m)
+	err = storage.MStorage.SaveMetric(req.Context(), m)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
@@ -91,7 +91,7 @@ func GetMetricIDWithJSON(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "bad request", http.StatusBadRequest)
 		return
 	}
-	metric, err := storage.MStorage.GetMetricID(m.ID)
+	metric, err := storage.MStorage.GetByID(req.Context(), m.ID)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return
@@ -125,7 +125,7 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	m, err := storage.MStorage.GetMetricID(params[1])
+	m, err := storage.MStorage.GetByID(req.Context(), params[1])
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return
@@ -137,9 +137,13 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func GetAllMetrics(res http.ResponseWriter, _ *http.Request) {
-	metrics := storage.MStorage.GetAllMetrics()
+func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
+	metrics, err := storage.MStorage.GetAllMetrics(req.Context())
 
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	counters := make(map[string]model.Metrics)
 	gauges := make(map[string]model.Metrics)
 
@@ -219,7 +223,7 @@ func GetAllMetrics(res http.ResponseWriter, _ *http.Request) {
 }
 
 func PingHandler(res http.ResponseWriter, req *http.Request) {
-	err := storage.DBPool.Ping(req.Context())
+	err := storage.MStorage.Ping(req.Context())
 	if err != nil {
 		http.Error(res, "failed to connect to the database", http.StatusInternalServerError)
 		return
