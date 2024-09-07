@@ -18,17 +18,21 @@ import (
 )
 
 func Start() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	if err := l.Initialize(f.LogLevel); err != nil {
 		return err
+	}
+
+	if err := storage.InitDB(ctx); err != nil {
+		l.Log.Info("Error init DB", zap.Error(err))
 	}
 
 	if err := storage.MStorage.Init(); err != nil {
 		l.Log.Info("Error init storage", zap.Error(err))
 		return err
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	go startSaveMetrics(ctx)
 
@@ -70,6 +74,7 @@ func GetRouter() chi.Router {
 	r.Use(middleware.Recoverer)
 
 	r.Get("/", handlers.GetAllMetrics)
+	r.Get("/ping", handlers.PingHandler)
 
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/", handlers.PostMetricsWithJSON)

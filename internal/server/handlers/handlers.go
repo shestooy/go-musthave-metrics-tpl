@@ -200,7 +200,7 @@ func GetAllMetrics(res http.ResponseWriter, _ *http.Request) {
 		},
 		}).Parse(tmp)
 	if err != nil {
-		http.Error(res, "не удалось создать шаблон", http.StatusInternalServerError)
+		http.Error(res, "the template could not be executed", http.StatusInternalServerError)
 		return
 	}
 
@@ -214,6 +214,14 @@ func GetAllMetrics(res http.ResponseWriter, _ *http.Request) {
 
 	err = t.Execute(res, data)
 	if err != nil {
-		http.Error(res, "не удалось выполнить шаблон", http.StatusInternalServerError)
+		http.Error(res, "the template could not be executed", http.StatusInternalServerError)
+	}
+}
+
+func PingHandler(res http.ResponseWriter, req *http.Request) {
+	err := storage.DBPool.Ping(req.Context())
+	if err != nil {
+		http.Error(res, "failed to connect to the database", http.StatusInternalServerError)
+		return
 	}
 }
