@@ -47,8 +47,8 @@ func ParseServerFlags() error {
 			return err
 		}
 	}
-	if envDbDsn := os.Getenv("DATABASE_DSN"); envDbDsn != "" {
-		AddrDB = envDbDsn
+	if envDBDsn := os.Getenv("DATABASE_DSN"); envDBDsn != "" {
+		AddrDB = envDBDsn
 	}
 	return nil
 }
