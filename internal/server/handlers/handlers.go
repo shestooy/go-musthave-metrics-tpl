@@ -229,3 +229,16 @@ func PingHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 }
+
+func UpdateSomeMetrics(res http.ResponseWriter, req *http.Request) {
+	if !strings.Contains(req.Header.Get("Content-Type"), "application/json") {
+		http.Error(res, "bad request", http.StatusBadRequest)
+		return
+	}
+	var metrics []model.Metrics
+	if err := json.NewDecoder(req.Body).Decode(&metrics); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+}

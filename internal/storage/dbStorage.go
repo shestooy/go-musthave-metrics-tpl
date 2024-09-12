@@ -11,6 +11,8 @@ type DB struct {
 	dbPool *pgxpool.Pool
 }
 
+// TODO fix db table and con
+// TODO optimize save method
 func (p *DB) Ping(ctx context.Context) error {
 	return p.dbPool.Ping(ctx)
 }
@@ -31,7 +33,6 @@ func (p *DB) NewPostgresStorage(ctx context.Context) error {
 	    type VARCHAR(255) NOT NULL DEFAULT '',
 	    delta INTEGER NOT NULL DEFAULT 0,
 	    value DOUBLE PRECISION NOT NULL DEFAULT 0,
-	    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`
 
 	_, err := p.dbPool.Exec(ctx, query)
@@ -95,6 +96,17 @@ func (p *DB) GetByID(ctx context.Context, id string) (model.Metrics, error) {
 		return model.Metrics{}, err
 	}
 	return m, nil
+}
+
+func (p *DB) SaveMetrics(ctx context.Context, metrics []model.Metrics) ([]model.Metrics, error) {
+	tx, err := p.dbPool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, metric := range metrics {
+		_, err := tx.Exec(ctx, `INSERT INTO metrics (id, type, delta, value, timestamp) `)
+	}
 }
 
 func (p *DB) Close() {

@@ -65,6 +65,8 @@ func GetRouter() chi.Router {
 	r.Get("/", handlers.GetAllMetrics)
 	r.Get("/ping", handlers.PingHandler)
 
+	r.Post("/updates/", handlers.PostMetrics)
+
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/", handlers.PostMetricsWithJSON)
 		r.Post("/{type}/{name}/{value}", handlers.PostMetrics)
