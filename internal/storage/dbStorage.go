@@ -47,7 +47,7 @@ func (p *DB) SaveMetric(ctx context.Context, m model.Metrics) error {
 		_, err := p.dbPool.Exec(ctx, `INSERT INTO public.metrics (id, type, value)
 												VALUES ($1,$2,$3)
 												ON CONFLICT (id)
-												DO UPDATE SET mtype = excluded.mtype, value = excluded.value;`,
+												DO UPDATE SET type = excluded.type, value = excluded.value;`,
 			m.ID, m.MType, *m.Value)
 		if err != nil {
 			return err
@@ -56,7 +56,7 @@ func (p *DB) SaveMetric(ctx context.Context, m model.Metrics) error {
 		_, err := p.dbPool.Exec(ctx, `INSERT INTO public.metrics (id, type, delta)
 												VALUES ($1,$2,$3)
 												ON CONFLICT (id)
-												DO UPDATE SET delta = excluded.delta;`,
+												DO UPDATE SET delta = (metrics.delta + excluded.delta);`,
 			m.ID, m.MType, *m.Delta)
 		if err != nil {
 			return err
