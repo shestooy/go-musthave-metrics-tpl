@@ -68,11 +68,11 @@ func Compress(m []Metric) ([]byte, error) {
 
 	err := json.NewEncoder(w).Encode(m)
 	if err != nil {
-		log.Printf(err.Error())
+		log.Println(err.Error())
 		return nil, err
 	}
 	if err = w.Close(); err != nil {
-		log.Printf(err.Error())
+		log.Println(err.Error())
 		return nil, err
 	}
 	return buf.Bytes(), nil
