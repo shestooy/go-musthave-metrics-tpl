@@ -31,11 +31,12 @@ func TestStorage_UpdateMetric(t *testing.T) {
 		Value: func(v float64) *float64 { return &v }(10),
 	}
 
-	err = MStorage.SaveMetric(context.Background(), metric)
-	assert.NoError(t, err)
+	m, err := MStorage.SaveMetric(context.Background(), metric)
+	require.NotEmpty(t, m)
+	require.NoError(t, err)
 
 	storedMetric, err := MStorage.GetByID(context.Background(), metric.ID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, metric, storedMetric)
 }
 
@@ -52,12 +53,13 @@ func TestMemStorage_GetMetricID(t *testing.T) {
 		Value: func(v float64) *float64 { return &v }(20),
 	}
 
-	err = MStorage.SaveMetric(context.Background(), metric)
+	m, err := MStorage.SaveMetric(context.Background(), metric)
+	require.NotEmpty(t, m)
 	require.NoError(t, err)
 
 	retrievedMetric, err := MStorage.GetByID(context.Background(), metric.ID)
-	assert.NoError(t, err)
-	assert.Equal(t, metric, retrievedMetric)
+	require.NoError(t, err)
+	require.Equal(t, metric, retrievedMetric)
 
 	_, err = MStorage.GetByID(context.Background(), "testErr")
 	assert.Error(t, err)
@@ -81,9 +83,11 @@ func TestStorage_GetAllMetrics(t *testing.T) {
 		Delta: func(v int64) *int64 { return &v }(432),
 	}
 
-	err = MStorage.SaveMetric(context.Background(), metric1)
+	m, err := MStorage.SaveMetric(context.Background(), metric1)
+	require.NotEmpty(t, m)
 	require.NoError(t, err)
-	err = MStorage.SaveMetric(context.Background(), metric2)
+	m, err = MStorage.SaveMetric(context.Background(), metric2)
+	require.NotEmpty(t, m)
 	require.NoError(t, err)
 
 	allMetrics, err := MStorage.GetAllMetrics(context.Background())

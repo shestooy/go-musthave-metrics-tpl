@@ -23,15 +23,9 @@ func PostMetricsWithJSON(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err := storage.MStorage.SaveMetric(req.Context(), m)
+	m, err := storage.MStorage.SaveMetric(req.Context(), m)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	m, err = storage.MStorage.GetByID(req.Context(), m.ID)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -73,7 +67,7 @@ func PostMetrics(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = storage.MStorage.SaveMetric(req.Context(), m)
+	_, err = storage.MStorage.SaveMetric(req.Context(), m)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
@@ -240,5 +234,24 @@ func UpdateSomeMetrics(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
-
+	metrics, err := storage.MStorage.SaveMetrics(req.Context(), metrics)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+	res.Header().Set("Content-Type", "application/json")
+	resp, err := json.Marshal(&metrics)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res.WriteHeader(http.StatusOK)
+	_, err = res.Write(resp)
+	if err != nil {
+		log.Println(err.Error())
+	}
+	err = req.Body.Close()
+	if err != nil {
+		log.Println(err.Error())
+	}
 }

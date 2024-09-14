@@ -15,28 +15,25 @@ func postMetrics(url string, metrics []m.Metric) {
 	client := resty.New()
 	url, _ = strings.CutPrefix(url, "http://")
 
-	for _, metric := range metrics {
-		body, err := metric.Compress()
-		if err != nil {
-			log.Printf("error compress procedure. Err : %s", err.Error())
-			continue
-		}
-		resp, err := client.R().
-			SetHeader("Content-Type", "application/json").
-			SetHeader("Content-Encoding", "gzip").
-			SetBody(body).
-			Post("http://" + url + "/update/")
-
-		if err != nil {
-			log.Printf("error send request: %s. Name metric: %s", err, metric.ID)
-			continue
-		}
-
-		if resp.StatusCode() != http.StatusOK {
-			log.Printf("unexpected status code. Expected code 200, got %d. Name metric: %s", resp.StatusCode(), metric.ID)
-			continue
-		}
+	body, err := m.Compress(metrics)
+	if err != nil {
+		log.Printf("error compress procedure. Err : %s", err.Error())
+		return
 	}
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip").
+		SetBody(body).
+		Post("http://" + url + "/updates/")
+
+	if err != nil {
+		log.Printf(err.Error())
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		log.Printf("unexpected status code. Expected code 200, got %d.", resp.StatusCode())
+	}
+
 	m.PollCount = 0
 }
 

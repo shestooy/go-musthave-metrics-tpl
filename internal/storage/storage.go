@@ -18,8 +18,9 @@ var MStorage IStorage
 
 type IStorage interface {
 	Init(ctx context.Context) error
-	SaveMetric(ctx context.Context, m model.Metrics) error
+	SaveMetric(ctx context.Context, m model.Metrics) (model.Metrics, error)
 	GetAllMetrics(ctx context.Context) (map[string]model.Metrics, error)
+	SaveMetrics(ctx context.Context, metrics []model.Metrics) ([]model.Metrics, error)
 	GetByID(ctx context.Context, id string) (model.Metrics, error)
 	Ping(ctx context.Context) error
 	Close()
@@ -38,28 +39,43 @@ func (m *Storage) Init(ctx context.Context) error {
 	return m.restore(ctx)
 }
 
-func (m *Storage) SaveMetric(ctx context.Context, metric model.Metrics) error {
+func (m *Storage) SaveMetric(ctx context.Context, metric model.Metrics) (model.Metrics, error) {
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return model.Metrics{}, ctx.Err()
 	default:
 	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if metric.MType != "gauge" && metric.MType != "counter" {
-		return errors.New("non correct type of metric")
+		return model.Metrics{}, errors.New("non correct type of metric")
 	}
 
 	if _, ok := m.Metrics[metric.ID]; metric.MType == "counter" && ok {
 		*m.Metrics[metric.ID].Delta += *metric.Delta
-		return nil
+		metric.Delta = m.Metrics[metric.ID].Delta
+		return metric, nil
+	} else {
+		m.Metrics[metric.ID] = metric
 	}
-	m.Metrics[metric.ID] = metric
+
 	if flags.StorageInterval == 0 {
-		return WriteInFile(ctx, m)
+		return metric, WriteInFile(ctx, m)
 	}
-	return nil
+	return metric, nil
+}
+
+func (m *Storage) SaveMetrics(ctx context.Context, metrics []model.Metrics) ([]model.Metrics, error) {
+	ans := make([]model.Metrics, 0)
+	for _, metric := range metrics {
+		newMetric, err := m.SaveMetric(ctx, metric)
+		if err != nil {
+			return nil, err
+		}
+		ans = append(ans, newMetric)
+	}
+	return ans, nil
 }
 
 func (m *Storage) GetByID(ctx context.Context, id string) (model.Metrics, error) {
@@ -106,7 +122,7 @@ func (m *Storage) restore(ctx context.Context) error {
 		if err = json.Unmarshal(scanner.Bytes(), &metric); err != nil {
 			return err
 		}
-		err = m.SaveMetric(ctx, *metric)
+		_, err = m.SaveMetric(ctx, *metric)
 		if err != nil {
 			return err
 		}
