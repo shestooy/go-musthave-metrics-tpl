@@ -27,7 +27,7 @@ func postMetrics(url string, metrics []m.Metric) {
 		Post("http://" + url + "/updates/")
 
 	if err != nil {
-		log.Printf(err.Error())
+		log.Println(err.Error())
 	}
 
 	if resp.StatusCode() != http.StatusOK {
