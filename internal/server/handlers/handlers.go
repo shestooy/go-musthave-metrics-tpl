@@ -28,7 +28,13 @@ func PostMetricsWithJSON(res http.ResponseWriter, req *http.Request) {
 	err := retry.Do(func() error {
 		var err error
 		m, err = storage.MStorage.SaveMetric(req.Context(), m)
-		return err
+		if err != nil {
+			if !utils.IsRetriableError(err) {
+				return retry.Unrecoverable(err)
+			}
+			return err
+		}
+		return nil
 	},
 		retry.Attempts(4),
 		retry.DelayType(utils.RetryDelay))
@@ -77,7 +83,13 @@ func PostMetrics(res http.ResponseWriter, req *http.Request) {
 	}
 	err = retry.Do(func() error {
 		_, err = storage.MStorage.SaveMetric(req.Context(), m)
-		return err
+		if err != nil {
+			if !utils.IsRetriableError(err) {
+				return retry.Unrecoverable(err)
+			}
+			return err
+		}
+		return nil
 	},
 		retry.Attempts(4),
 		retry.DelayType(utils.RetryDelay))
@@ -101,7 +113,13 @@ func GetMetricIDWithJSON(res http.ResponseWriter, req *http.Request) {
 	err := retry.Do(func() error {
 		var err error
 		m, err = storage.MStorage.GetByID(req.Context(), m.ID)
-		return err
+		if err != nil {
+			if !utils.IsRetriableError(err) {
+				return retry.Unrecoverable(err)
+			}
+			return err
+		}
+		return nil
 	},
 		retry.Attempts(4),
 		retry.DelayType(utils.RetryDelay))
@@ -143,7 +161,13 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 	err := retry.Do(func() error {
 		var err error
 		m, err = storage.MStorage.GetByID(req.Context(), params[1])
-		return err
+		if err != nil {
+			if !utils.IsRetriableError(err) {
+				return retry.Unrecoverable(err)
+			}
+			return err
+		}
+		return nil
 	},
 		retry.Attempts(4),
 		retry.DelayType(utils.RetryDelay))
@@ -165,7 +189,13 @@ func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
 	err := retry.Do(func() error {
 		var err error
 		metrics, err = storage.MStorage.GetAllMetrics(req.Context())
-		return err
+		if err != nil {
+			if !utils.IsRetriableError(err) {
+				return retry.Unrecoverable(err)
+			}
+			return err
+		}
+		return nil
 	},
 		retry.Attempts(4),
 		retry.DelayType(utils.RetryDelay))
@@ -266,11 +296,21 @@ func UpdateSomeMetrics(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	var metrics []model.Metrics
-	if err := json.NewDecoder(req.Body).Decode(&metrics); err != nil {
+	var err error
+	if err = json.NewDecoder(req.Body).Decode(&metrics); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
-	metrics, err := storage.MStorage.SaveMetrics(req.Context(), metrics)
+	err = retry.Do(func() error {
+		metrics, err = storage.MStorage.SaveMetrics(req.Context(), metrics)
+		if err != nil {
+			if !utils.IsRetriableError(err) {
+				return retry.Unrecoverable(err)
+			}
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return

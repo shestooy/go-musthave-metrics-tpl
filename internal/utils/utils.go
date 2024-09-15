@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"errors"
 	"github.com/avast/retry-go"
+	"github.com/jackc/pgx/v5/pgconn"
+	"net"
 	"time"
 )
 
@@ -11,4 +14,22 @@ func RetryDelay(n uint, _ error, _ *retry.Config) time.Duration {
 		return delays[n]
 	}
 	return delays[2]
+}
+
+func IsRetriableError(err error) bool {
+	var connectErr *pgconn.ConnectError
+	if errors.As(err, &connectErr) {
+		return true
+	}
+
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		return true
+	}
+
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true
+	}
+	return false
 }

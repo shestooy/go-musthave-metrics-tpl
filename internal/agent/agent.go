@@ -31,6 +31,9 @@ func postMetrics(url string, metrics []m.Metric) error {
 
 		if err != nil {
 			log.Println(err.Error())
+			if !utils.IsRetriableError(err) {
+				return retry.Unrecoverable(err)
+			}
 			return err
 		}
 

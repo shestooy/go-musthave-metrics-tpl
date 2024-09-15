@@ -34,7 +34,8 @@ func TestPostMetrics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			postMetrics(s.URL, tt.values)
+			err := postMetrics(s.URL, tt.values)
+			require.NoError(t, err)
 			req, err := http.NewRequest(http.MethodGet, s.URL+"/value/gauge/Alloc", http.NoBody)
 			require.NoError(t, err)
 			resp, err := s.Client().Do(req)
