@@ -28,8 +28,6 @@ func IsRetriableError(err error) bool {
 	}
 
 	var netErr net.Error
-	if errors.As(err, &netErr) {
-		return true
-	}
-	return false
+	return errors.As(err, &netErr)
+
 }
