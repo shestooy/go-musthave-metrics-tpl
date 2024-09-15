@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"database/sql"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
@@ -91,22 +90,17 @@ func (p *DB) GetAllMetrics(ctx context.Context) (map[string]model.Metrics, error
 
 func (p *DB) GetByID(ctx context.Context, id string) (model.Metrics, error) {
 	row := p.dbPool.QueryRow(ctx, `SELECT id, type, delta, value FROM metrics WHERE id = $1`, id)
-	var delta sql.NullInt64
-	var value sql.NullFloat64
 	var m model.Metrics
 
-	err := row.Scan(&m.ID, &m.MType, &delta, &value)
+	err := row.Scan(&m.ID, &m.MType, &m.Delta, &m.Value)
 	if err != nil {
 		return model.Metrics{}, err
 	}
-	if m.MType == "gauge" {
-		if value.Valid {
-			m.Value = &value.Float64
-		}
-	} else if m.MType == "counter" {
-		if delta.Valid {
-			m.Delta = &delta.Int64
-		}
+	switch m.MType {
+	case "gauge":
+		m.Delta = nil
+	case "counter":
+		m.Value = nil
 	}
 
 	return m, nil
