@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"github.com/avast/retry-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/utils"
 	"html/template"
 	"log"
 	"net/http"
@@ -23,7 +25,13 @@ func PostMetricsWithJSON(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	m, err := storage.MStorage.SaveMetric(req.Context(), m)
+	err := retry.Do(func() error {
+		var err error
+		m, err = storage.MStorage.SaveMetric(req.Context(), m)
+		return err
+	},
+		retry.Attempts(4),
+		retry.DelayType(utils.RetryDelay))
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
@@ -67,7 +75,12 @@ func PostMetrics(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
-	_, err = storage.MStorage.SaveMetric(req.Context(), m)
+	err = retry.Do(func() error {
+		_, err = storage.MStorage.SaveMetric(req.Context(), m)
+		return err
+	},
+		retry.Attempts(4),
+		retry.DelayType(utils.RetryDelay))
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
@@ -85,14 +98,21 @@ func GetMetricIDWithJSON(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "bad request", http.StatusBadRequest)
 		return
 	}
-	metric, err := storage.MStorage.GetByID(req.Context(), m.ID)
+	err := retry.Do(func() error {
+		var err error
+		m, err = storage.MStorage.GetByID(req.Context(), m.ID)
+		return err
+	},
+		retry.Attempts(4),
+		retry.DelayType(utils.RetryDelay))
+
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return
 	}
 
 	res.Header().Set("Content-Type", "application/json")
-	resp, err := json.Marshal(&metric)
+	resp, err := json.Marshal(&m)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -119,7 +139,15 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	m, err := storage.MStorage.GetByID(req.Context(), params[1])
+	var m = model.Metrics{}
+	err := retry.Do(func() error {
+		var err error
+		m, err = storage.MStorage.GetByID(req.Context(), params[1])
+		return err
+	},
+		retry.Attempts(4),
+		retry.DelayType(utils.RetryDelay))
+
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return
@@ -132,7 +160,15 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 }
 
 func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
-	metrics, err := storage.MStorage.GetAllMetrics(req.Context())
+	var metrics = map[string]model.Metrics{}
+
+	err := retry.Do(func() error {
+		var err error
+		metrics, err = storage.MStorage.GetAllMetrics(req.Context())
+		return err
+	},
+		retry.Attempts(4),
+		retry.DelayType(utils.RetryDelay))
 
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)

@@ -36,10 +36,7 @@ func (p *DB) NewPostgresStorage(ctx context.Context) error {
 	CREATE INDEX IF NOT EXISTS idx_id ON metrics (id)`
 
 	_, err := p.dbPool.Exec(ctx, query)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (p *DB) SaveMetric(ctx context.Context, m model.Metrics) (model.Metrics, error) {
@@ -65,6 +62,7 @@ func (p *DB) SaveMetric(ctx context.Context, m model.Metrics) (model.Metrics, er
 			return m, err
 		}
 	}
+
 	return m, nil
 }
 
