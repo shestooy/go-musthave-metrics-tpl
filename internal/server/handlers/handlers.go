@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"github.com/avast/retry-go"
 	"github.com/go-chi/chi/v5"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/utils"
+	"go.uber.org/zap"
 	"html/template"
 	"log"
 	"net/http"
@@ -39,6 +41,7 @@ func PostMetricsWithJSON(res http.ResponseWriter, req *http.Request) {
 		retry.Attempts(4),
 		retry.DelayType(utils.RetryDelay))
 	if err != nil {
+		logger.Log.Error("err", zap.Error(err))
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -125,6 +128,7 @@ func GetMetricIDWithJSON(res http.ResponseWriter, req *http.Request) {
 		retry.DelayType(utils.RetryDelay))
 
 	if err != nil {
+		logger.Log.Error("err", zap.Error(err))
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -312,6 +316,7 @@ func UpdateSomeMetrics(res http.ResponseWriter, req *http.Request) {
 		return nil
 	})
 	if err != nil {
+		logger.Log.Error("err", zap.Error(err))
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
