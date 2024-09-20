@@ -28,7 +28,7 @@ type IStorage interface {
 	SaveMetrics(ctx context.Context, metrics []model.Metrics) ([]model.Metrics, error)
 	GetByID(ctx context.Context, id string) (model.Metrics, error)
 	Ping(ctx context.Context) error
-	Close()
+	Close() error
 }
 
 type Storage struct {
@@ -162,11 +162,13 @@ func (m *Storage) Ping(_ context.Context) error {
 	return errors.New("not supported")
 }
 
-func (m *Storage) Close() {
+func (m *Storage) Close() error {
 	if err := WriteInFile(context.Background(), m); err != nil {
 		l.Log.Info("error saving metrics", zap.Error(err))
+		return err
 	}
 	l.Log.Info("Last save in file complete")
+	return nil
 }
 
 func startSaveMetrics(ctx context.Context, m *Storage) {

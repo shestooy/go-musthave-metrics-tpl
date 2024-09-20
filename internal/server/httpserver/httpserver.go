@@ -48,7 +48,9 @@ func Start() error {
 		cancel()
 	}
 
-	storage.MStorage.Close()
+	if err := storage.MStorage.Close(); err != nil {
+		l.Log.Error("Error closing storage", zap.Error(err))
+	}
 
 	l.Log.Info("Server shutdown complete")
 	return nil
