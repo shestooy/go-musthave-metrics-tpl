@@ -30,7 +30,7 @@ func (p *DB) NewPostgresStorage(ctx context.Context) error {
 	CREATE TABLE IF NOT EXISTS metrics (
 	    id VARCHAR(255) PRIMARY KEY,
 	    type VARCHAR(255) NOT NULL DEFAULT '',
-	    delta INTEGER NOT NULL DEFAULT 0,
+	    delta BIGINT NOT NULL DEFAULT 0,
 	    value DOUBLE PRECISION NOT NULL DEFAULT 0
 	);
 	CREATE INDEX IF NOT EXISTS idx_id ON metrics (id)`
