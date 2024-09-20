@@ -60,7 +60,6 @@ func (m *Storage) SaveMetric(ctx context.Context, metric model.Metrics) (model.M
 	if _, ok := m.Metrics[metric.ID]; metric.MType == counter && ok {
 		*m.Metrics[metric.ID].Delta += *metric.Delta
 		metric.Delta = m.Metrics[metric.ID].Delta
-		return metric, nil
 	} else {
 		m.Metrics[metric.ID] = metric
 	}
