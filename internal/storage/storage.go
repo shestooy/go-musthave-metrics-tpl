@@ -14,6 +14,11 @@ import (
 	"time"
 )
 
+const (
+	gauge   = "gauge"
+	counter = "counter"
+)
+
 var MStorage IStorage
 
 type IStorage interface {
@@ -48,11 +53,11 @@ func (m *Storage) SaveMetric(ctx context.Context, metric model.Metrics) (model.M
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if metric.MType != "gauge" && metric.MType != "counter" {
+	if metric.MType != gauge && metric.MType != counter {
 		return model.Metrics{}, errors.New("non correct type of metric")
 	}
 
-	if _, ok := m.Metrics[metric.ID]; metric.MType == "counter" && ok {
+	if _, ok := m.Metrics[metric.ID]; metric.MType == counter && ok {
 		*m.Metrics[metric.ID].Delta += *metric.Delta
 		metric.Delta = m.Metrics[metric.ID].Delta
 		return metric, nil

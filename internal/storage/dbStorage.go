@@ -41,7 +41,7 @@ func (p *DB) NewPostgresStorage(ctx context.Context) error {
 
 func (p *DB) SaveMetric(ctx context.Context, m model.Metrics) (model.Metrics, error) {
 	switch m.MType {
-	case "gauge":
+	case gauge:
 		err := p.dbPool.QueryRow(ctx, `INSERT INTO metrics (id, type, value)
 												VALUES ($1,$2,$3)
 												ON CONFLICT (id)
@@ -51,7 +51,7 @@ func (p *DB) SaveMetric(ctx context.Context, m model.Metrics) (model.Metrics, er
 		if err != nil {
 			return m, err
 		}
-	case "counter":
+	case counter:
 		err := p.dbPool.QueryRow(ctx, `INSERT INTO metrics (id, type, delta)
 												VALUES ($1,$2,$3)
 												ON CONFLICT (id)
@@ -97,9 +97,9 @@ func (p *DB) GetByID(ctx context.Context, id string) (model.Metrics, error) {
 		return model.Metrics{}, err
 	}
 	switch m.MType {
-	case "gauge":
+	case gauge:
 		m.Delta = nil
-	case "counter":
+	case counter:
 		m.Value = nil
 	}
 
@@ -122,7 +122,7 @@ func (p *DB) SaveMetrics(ctx context.Context, metrics []model.Metrics) ([]model.
 	for _, metric := range metrics {
 		var ansMetric model.Metrics
 		switch metric.MType {
-		case "gauge":
+		case gauge:
 			err = tx.QueryRow(ctx, `INSERT INTO metrics (id, type, value) VALUES ($1, $2, $3)
 									ON CONFLICT (id)
 									DO UPDATE SET value = excluded.value
@@ -135,7 +135,7 @@ func (p *DB) SaveMetrics(ctx context.Context, metrics []model.Metrics) ([]model.
 			ansMetric.MType = metric.MType
 			ansMetric.ID = metric.ID
 			ans = append(ans, ansMetric)
-		case "counter":
+		case counter:
 			err = tx.QueryRow(ctx, `INSERT INTO metrics (id, type, delta) VALUES ($1, $2, $3)
 									ON CONFLICT (id)
 									DO UPDATE SET delta = metrics.delta +excluded.delta
