@@ -1,8 +1,10 @@
 package agent
 
 import (
+	"github.com/avast/retry-go"
 	m "github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent/metrics"
 	f "github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/utils"
 	"log"
 	"net/http"
 	"strings"
@@ -11,33 +13,41 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func postMetrics(url string, metrics []m.Metric) {
+func postMetrics(url string, metrics []m.Metric) error {
 	client := resty.New()
 	url, _ = strings.CutPrefix(url, "http://")
 
-	for _, metric := range metrics {
-		body, err := metric.Compress()
-		if err != nil {
-			log.Printf("error compress procedure. Err : %s", err.Error())
-			continue
-		}
+	body, err := m.Compress(metrics)
+	if err != nil {
+		log.Printf("error compress procedure. Err : %s", err.Error())
+		return err
+	}
+	err = retry.Do(func() error {
 		resp, err := client.R().
 			SetHeader("Content-Type", "application/json").
 			SetHeader("Content-Encoding", "gzip").
 			SetBody(body).
-			Post("http://" + url + "/update/")
+			Post("http://" + url + "/updates/")
 
 		if err != nil {
-			log.Printf("error send request: %s. Name metric: %s", err, metric.ID)
-			continue
+			log.Println(err.Error())
+			if !utils.IsRetriableError(err) {
+				return retry.Unrecoverable(err)
+			}
+			return err
 		}
 
 		if resp.StatusCode() != http.StatusOK {
-			log.Printf("unexpected status code. Expected code 200, got %d. Name metric: %s", resp.StatusCode(), metric.ID)
-			continue
+			log.Printf("unexpected status code. Expected code 200, got %d.", resp.StatusCode())
 		}
-	}
-	m.PollCount = 0
+
+		m.PollCount = 0
+
+		return nil
+	},
+		retry.Attempts(4),
+		retry.DelayType(utils.RetryDelay))
+	return err
 }
 
 func Start() {
@@ -57,7 +67,10 @@ func Start() {
 
 		case <-reportTicker.C:
 			metrics = append(metrics, m.Metric{MType: m.Counter, ID: "PollCount", Delta: &m.PollCount})
-			postMetrics(f.AgentEndPoint, metrics)
+			err := postMetrics(f.AgentEndPoint, metrics)
+			if err != nil {
+				log.Printf("%s - attempts to send metrics failed", err.Error())
+			}
 			metrics = make([]m.Metric, 0)
 		}
 	}

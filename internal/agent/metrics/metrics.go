@@ -61,18 +61,18 @@ func GetAllMetrics() []Metric {
 	}
 }
 
-func (m *Metric) Compress() ([]byte, error) {
+func Compress(m []Metric) ([]byte, error) {
 	var buf bytes.Buffer
 
 	w := gzip.NewWriter(&buf)
 
 	err := json.NewEncoder(w).Encode(m)
 	if err != nil {
-		log.Printf("error encoding metric: %s. Name metric: %s", err, m.ID)
+		log.Println(err.Error())
 		return nil, err
 	}
 	if err = w.Close(); err != nil {
-		log.Printf("error closing gzip writer: %s. Name metric: %s", err, m.ID)
+		log.Println(err.Error())
 		return nil, err
 	}
 	return buf.Bytes(), nil

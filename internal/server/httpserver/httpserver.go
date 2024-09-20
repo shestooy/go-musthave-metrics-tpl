@@ -14,23 +14,19 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 func Start() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	if err := l.Initialize(f.LogLevel); err != nil {
 		return err
 	}
 
-	if err := storage.MStorage.Init(); err != nil {
-		l.Log.Info("Error init storage", zap.Error(err))
-		return err
+	if err := initializeStorage(ctx); err != nil {
+		l.Log.Info("Error init Storage", zap.Error(err))
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go startSaveMetrics(ctx)
 
 	l.Log.Info("Running server", zap.String("address", f.ServerEndPoint))
 
@@ -52,12 +48,11 @@ func Start() error {
 		cancel()
 	}
 
-	if err := storage.MStorage.WriteInFile(); err != nil {
-		l.Log.Error("error write metrics in file", zap.Error(err))
-		return err
+	if err := storage.MStorage.Close(); err != nil {
+		l.Log.Error("Error closing storage", zap.Error(err))
 	}
 
-	l.Log.Info("server shutdown complete")
+	l.Log.Info("Server shutdown complete")
 	return nil
 }
 
@@ -70,6 +65,9 @@ func GetRouter() chi.Router {
 	r.Use(middleware.Recoverer)
 
 	r.Get("/", handlers.GetAllMetrics)
+	r.Get("/ping", handlers.PingHandler)
+
+	r.Post("/updates/", handlers.UpdateSomeMetrics)
 
 	r.Route("/update", func(r chi.Router) {
 		r.Post("/", handlers.PostMetricsWithJSON)
@@ -84,20 +82,15 @@ func GetRouter() chi.Router {
 	return r
 }
 
-func startSaveMetrics(ctx context.Context) {
-	if f.StorageInterval > 0 {
-		ticker := time.NewTicker(time.Duration(f.StorageInterval) * time.Second)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				if err := storage.MStorage.WriteInFile(); err != nil {
-					l.Log.Info("error saving metrics", zap.Error(err))
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
+func initializeStorage(ctx context.Context) error {
+	if f.AddrDB == "" {
+		storage.MStorage = &storage.Storage{}
+	} else {
+		storage.MStorage = &storage.DB{}
 	}
+	err := storage.MStorage.Init(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
 }

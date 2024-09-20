@@ -2,9 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"github.com/avast/retry-go"
 	"github.com/go-chi/chi/v5"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/utils"
+	"go.uber.org/zap"
 	"html/template"
 	"log"
 	"net/http"
@@ -23,15 +27,22 @@ func PostMetricsWithJSON(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err := storage.MStorage.UpdateMetric(m)
+	err := retry.Do(func() error {
+		var err error
+		m, err = storage.MStorage.SaveMetric(req.Context(), m)
+		if err != nil {
+			if !utils.IsRetriableError(err) {
+				return retry.Unrecoverable(err)
+			}
+			return err
+		}
+		return nil
+	},
+		retry.Attempts(4),
+		retry.DelayType(utils.RetryDelay))
 	if err != nil {
+		logger.Log.Error("err", zap.Error(err))
 		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	m, err = storage.MStorage.GetMetricID(m.ID)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -73,7 +84,18 @@ func PostMetrics(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = storage.MStorage.UpdateMetric(m)
+	err = retry.Do(func() error {
+		_, err = storage.MStorage.SaveMetric(req.Context(), m)
+		if err != nil {
+			if !utils.IsRetriableError(err) {
+				return retry.Unrecoverable(err)
+			}
+			return err
+		}
+		return nil
+	},
+		retry.Attempts(4),
+		retry.DelayType(utils.RetryDelay))
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
@@ -91,14 +113,28 @@ func GetMetricIDWithJSON(res http.ResponseWriter, req *http.Request) {
 		http.Error(res, "bad request", http.StatusBadRequest)
 		return
 	}
-	metric, err := storage.MStorage.GetMetricID(m.ID)
+	err := retry.Do(func() error {
+		var err error
+		m, err = storage.MStorage.GetByID(req.Context(), m.ID)
+		if err != nil {
+			if !utils.IsRetriableError(err) {
+				return retry.Unrecoverable(err)
+			}
+			return err
+		}
+		return nil
+	},
+		retry.Attempts(4),
+		retry.DelayType(utils.RetryDelay))
+
 	if err != nil {
+		logger.Log.Error("err", zap.Error(err))
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return
 	}
 
 	res.Header().Set("Content-Type", "application/json")
-	resp, err := json.Marshal(&metric)
+	resp, err := json.Marshal(&m)
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusInternalServerError)
 		return
@@ -125,7 +161,21 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	m, err := storage.MStorage.GetMetricID(params[1])
+	var m = model.Metrics{}
+	err := retry.Do(func() error {
+		var err error
+		m, err = storage.MStorage.GetByID(req.Context(), params[1])
+		if err != nil {
+			if !utils.IsRetriableError(err) {
+				return retry.Unrecoverable(err)
+			}
+			return err
+		}
+		return nil
+	},
+		retry.Attempts(4),
+		retry.DelayType(utils.RetryDelay))
+
 	if err != nil {
 		http.Error(res, err.Error(), http.StatusNotFound)
 		return
@@ -137,9 +187,27 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func GetAllMetrics(res http.ResponseWriter, _ *http.Request) {
-	metrics := storage.MStorage.GetAllMetrics()
+func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
+	var metrics = map[string]model.Metrics{}
 
+	err := retry.Do(func() error {
+		var err error
+		metrics, err = storage.MStorage.GetAllMetrics(req.Context())
+		if err != nil {
+			if !utils.IsRetriableError(err) {
+				return retry.Unrecoverable(err)
+			}
+			return err
+		}
+		return nil
+	},
+		retry.Attempts(4),
+		retry.DelayType(utils.RetryDelay))
+
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	counters := make(map[string]model.Metrics)
 	gauges := make(map[string]model.Metrics)
 
@@ -200,7 +268,7 @@ func GetAllMetrics(res http.ResponseWriter, _ *http.Request) {
 		},
 		}).Parse(tmp)
 	if err != nil {
-		http.Error(res, "не удалось создать шаблон", http.StatusInternalServerError)
+		http.Error(res, "the template could not be executed", http.StatusInternalServerError)
 		return
 	}
 
@@ -214,6 +282,57 @@ func GetAllMetrics(res http.ResponseWriter, _ *http.Request) {
 
 	err = t.Execute(res, data)
 	if err != nil {
-		http.Error(res, "не удалось выполнить шаблон", http.StatusInternalServerError)
+		http.Error(res, "the template could not be executed", http.StatusInternalServerError)
+	}
+}
+
+func PingHandler(res http.ResponseWriter, req *http.Request) {
+	err := storage.MStorage.Ping(req.Context())
+	if err != nil {
+		http.Error(res, "failed to connect to the database", http.StatusInternalServerError)
+		return
+	}
+}
+
+func UpdateSomeMetrics(res http.ResponseWriter, req *http.Request) {
+	if !strings.Contains(req.Header.Get("Content-Type"), "application/json") {
+		http.Error(res, "bad request", http.StatusBadRequest)
+		return
+	}
+	var metrics []model.Metrics
+	var err error
+	if err = json.NewDecoder(req.Body).Decode(&metrics); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+	err = retry.Do(func() error {
+		metrics, err = storage.MStorage.SaveMetrics(req.Context(), metrics)
+		if err != nil {
+			if !utils.IsRetriableError(err) {
+				return retry.Unrecoverable(err)
+			}
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		logger.Log.Error("err", zap.Error(err))
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+	res.Header().Set("Content-Type", "application/json")
+	resp, err := json.Marshal(&metrics)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res.WriteHeader(http.StatusOK)
+	_, err = res.Write(resp)
+	if err != nil {
+		log.Println(err.Error())
+	}
+	err = req.Body.Close()
+	if err != nil {
+		log.Println(err.Error())
 	}
 }

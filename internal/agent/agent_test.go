@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	m "github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent/metrics"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/httpserver"
@@ -20,7 +21,8 @@ func TestPostMetrics(t *testing.T) {
 
 	flags.Restore = false
 	flags.StorageInterval = 5000
-	err := storage.MStorage.Init()
+	storage.MStorage = &storage.Storage{}
+	err := storage.MStorage.Init(context.Background())
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -32,7 +34,8 @@ func TestPostMetrics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			postMetrics(s.URL, tt.values)
+			err := postMetrics(s.URL, tt.values)
+			require.NoError(t, err)
 			req, err := http.NewRequest(http.MethodGet, s.URL+"/value/gauge/Alloc", http.NoBody)
 			require.NoError(t, err)
 			resp, err := s.Client().Do(req)
