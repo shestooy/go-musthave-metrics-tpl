@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"github.com/labstack/echo/v4"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/handlers"
@@ -20,36 +21,40 @@ func TestLoggingMiddleware(t *testing.T) {
 	err := l.Initialize("info")
 	require.NoError(t, err)
 
-	testHandler := http.HandlerFunc(func(res http.ResponseWriter, _ *http.Request) {
-		_, err = res.Write([]byte("test"))
-		require.NoError(t, err)
-	})
+	testHandler := func(c echo.Context) error {
+		return c.String(http.StatusOK, "test")
+	}
 	require.NotEmpty(t, testHandler)
 
-	middleware := LoggingMiddleware(testHandler)
+	e := echo.New()
+
+	middleware := Logging(testHandler)
 	require.NotEmpty(t, middleware)
 
-	req, err := http.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+
+	c := e.NewContext(req, rec)
+
+	err = middleware(c)
 	require.NoError(t, err)
-	require.NotEmpty(t, req)
 
-	rr := httptest.NewRecorder()
-	require.NotEmpty(t, rr)
-
-	middleware.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
-	assert.Equal(t, len("test"), rr.Body.Len())
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "test", rec.Body.String())
 }
 
 func TestGzipCompression(t *testing.T) {
 	storage.MStorage = &storage.Storage{}
 	err := storage.MStorage.Init(context.Background())
 	require.NoError(t, err)
+
 	flags.Restore = false
 	flags.StorageInterval = 5000
-	handler := GzipMiddleware(http.HandlerFunc(handlers.PostMetricsWithJSON))
 
-	srv := httptest.NewServer(handler)
+	e := echo.New()
+	e.POST("/update/", Gzip(handlers.PostMetricsWithJSON))
+
+	srv := httptest.NewServer(e.Server.Handler)
 	defer srv.Close()
 
 	requestBody := `{
@@ -72,13 +77,12 @@ func TestGzipCompression(t *testing.T) {
 		err = zb.Close()
 		require.NoError(t, err)
 
-		r := httptest.NewRequest(http.MethodPost, srv.URL+"/update/", buf)
-		r.Header.Set("Content-Type", "application/json")
-		r.Header.Set("Content-Encoding", "gzip")
-		r.RequestURI = ""
-		r.Header.Set("Accept-Encoding", "")
+		req := httptest.NewRequest(http.MethodPost, srv.URL+"/update/", buf)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Content-Encoding", "gzip")
+		req.RequestURI = ""
 
-		resp, err := http.DefaultClient.Do(r)
+		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -91,11 +95,12 @@ func TestGzipCompression(t *testing.T) {
 
 	t.Run("accepts_gzip", func(t *testing.T) {
 		buf := bytes.NewBufferString(requestBody)
-		r := httptest.NewRequest(http.MethodPost, srv.URL+"/update/", buf)
-		r.Header.Set("Accept-Encoding", "gzip")
-		r.Header.Set("Content-Type", "application/json")
-		r.RequestURI = ""
-		resp, err := http.DefaultClient.Do(r)
+		req := httptest.NewRequest(http.MethodPost, srv.URL+"/update/", buf)
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Content-Type", "application/json")
+		req.RequestURI = ""
+
+		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 

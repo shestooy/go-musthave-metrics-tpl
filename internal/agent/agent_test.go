@@ -2,9 +2,11 @@ package agent
 
 import (
 	"context"
+	"github.com/labstack/echo/v4"
 	m "github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent/metrics"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/httpserver"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/handlers"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/middlewares"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -15,8 +17,33 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func testServer(t *testing.T) *echo.Echo {
+	flags.Restore = false
+	flags.StorageInterval = 5000
+
+	storage.MStorage = &storage.Storage{}
+	err := storage.MStorage.Init(context.Background())
+	require.NoError(t, err)
+
+	e := echo.New()
+
+	e.HideBanner = true
+	e.HidePort = true
+
+	e.Use(middlewares.Gzip)
+	e.Use(middlewares.Logging)
+
+	e.POST("/updates/", handlers.UpdateSomeMetrics)
+	updateGroup := e.Group("/update")
+	updateGroup.POST("/:type/:name/:value", handlers.PostMetrics)
+
+	valueGroup := e.Group("/value")
+	valueGroup.GET("/:type/:name", handlers.GetMetricID)
+	return e
+}
+
 func TestPostMetrics(t *testing.T) {
-	s := httptest.NewServer(httpserver.GetRouter())
+	s := httptest.NewServer(testServer(t))
 	defer s.Close()
 
 	flags.Restore = false
