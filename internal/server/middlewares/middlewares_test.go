@@ -119,14 +119,13 @@ func TestGzipCompression(t *testing.T) {
 
 func TestHashMiddleware(t *testing.T) {
 	tests := []struct {
-		name                string
-		key                 string
-		requestBody         string
-		modifyHash          bool
-		expectedStatus      int
-		expectedResponse    string
-		expectResponseHash  bool
-		expectResponseError bool
+		name               string
+		key                string
+		requestBody        string
+		modifyHash         bool
+		expectedStatus     int
+		expectedResponse   string
+		expectResponseHash bool
 	}{
 		{
 			name:               "Valid key and correct hash",
@@ -138,13 +137,13 @@ func TestHashMiddleware(t *testing.T) {
 			expectResponseHash: true,
 		},
 		{
-			name:                "Valid key and incorrect hash",
-			key:                 "TEST",
-			requestBody:         "test body",
-			modifyHash:          true,
-			expectedStatus:      http.StatusBadRequest,
-			expectedResponse:    "the hash checksum did not match",
-			expectResponseError: true,
+			name:               "Valid key and incorrect hash",
+			key:                "TEST",
+			requestBody:        "test body",
+			modifyHash:         true,
+			expectedStatus:     http.StatusBadRequest,
+			expectedResponse:   "the hash checksum did not match",
+			expectResponseHash: false,
 		},
 		{
 			name:               "Empty key, hash check skipped",
@@ -178,17 +177,18 @@ func TestHashMiddleware(t *testing.T) {
 			}
 
 			rec := httptest.NewRecorder()
-			c := e.NewContext(req, rec)
-			e.Router().Find(http.MethodPost, "/", c)
 			e.ServeHTTP(rec, req)
+
 			assert.Equal(t, tc.expectedStatus, rec.Code)
-			responseBody, _ := io.ReadAll(rec.Body)
-			assert.Contains(t, string(responseBody), tc.expectedResponse)
+			responseBody := rec.Body.String()
+			assert.Contains(t, responseBody, tc.expectedResponse)
+
 			if tc.expectResponseHash {
 				resHash := rec.Header().Get("HashSHA256")
 				assert.NotEmpty(t, resHash)
-				expectedResHash := hash(responseBody, tc.key)
-				assert.Equal(t, expectedResHash, resHash)
+				expectedResHash := hash([]byte(responseBody), tc.key)
+				expectedResHashHex := hex.EncodeToString(expectedResHash)
+				assert.Equal(t, expectedResHashHex, resHash)
 			} else {
 				resHash := rec.Header().Get("HashSHA256")
 				assert.Empty(t, resHash)
