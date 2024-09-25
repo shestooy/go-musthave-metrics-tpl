@@ -173,7 +173,7 @@ func (m *Storage) Close() error {
 }
 
 func (m *Storage) startSaveMetrics(ctx context.Context) {
-	if flags.StorageInterval > 0 {
+	if flags.GetStorageInterval() > 0 {
 		ticker := time.NewTicker(time.Duration(flags.StorageInterval) * time.Second)
 		defer ticker.Stop()
 
