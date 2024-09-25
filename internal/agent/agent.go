@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"github.com/avast/retry-go"
@@ -24,7 +25,13 @@ func postMetrics(url string, metrics []m.Metric) error {
 		log.Printf("error compress procedure. Err : %s", err.Error())
 		return err
 	}
-	hash := getHash(body, f.AgentKey)
+	uncompressedBody, err := m.GetMetricsAsBody(metrics)
+	if err != nil {
+		log.Printf("error convert procedure. Err : %s", err.Error())
+		return err
+	}
+	hash := getHash(uncompressedBody, f.AgentKey)
+
 	err = retry.Do(func() error {
 		resp, err := client.R().
 			SetHeader("Content-Type", "application/json").
@@ -55,10 +62,9 @@ func postMetrics(url string, metrics []m.Metric) error {
 }
 
 func getHash(body []byte, key string) string {
-	hash := sha256.New()
-	hash.Write([]byte(key))
-	hash.Write(body)
-	return hex.EncodeToString(hash.Sum(nil))
+	h := hmac.New(sha256.New, []byte(key))
+	h.Write(body)
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func Start() {

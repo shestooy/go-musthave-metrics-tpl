@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"github.com/labstack/echo/v4"
@@ -18,11 +19,10 @@ func (w *responseWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-func hash(data []byte, key string) string {
-	hashSum := sha256.New()
-	hashSum.Write([]byte(key))
-	hashSum.Write(data)
-	return hex.EncodeToString(hashSum.Sum(nil))
+func hash(data []byte, key string) []byte {
+	h := hmac.New(sha256.New, []byte(key))
+	h.Write(data)
+	return h.Sum(nil)
 }
 
 func Hash(key string) echo.MiddlewareFunc {
@@ -38,8 +38,11 @@ func Hash(key string) echo.MiddlewareFunc {
 			}
 			c.Request().Body = io.NopCloser(strings.NewReader(string(body)))
 			bodyHash := hash(body, key)
+
 			reqBodyHash := c.Request().Header.Get("HashSHA256")
-			if bodyHash != reqBodyHash {
+			resHash, err := hex.DecodeString(reqBodyHash)
+
+			if !hmac.Equal(bodyHash, resHash) {
 				return c.String(http.StatusBadRequest, "the hash checksum did not match")
 			}
 
@@ -53,8 +56,8 @@ func Hash(key string) echo.MiddlewareFunc {
 			}
 
 			responseBytes := []byte(resBody.String())
-			resHash := hash(responseBytes, key)
-			c.Response().Header().Set("HashSHA256", resHash)
+			resHash = hash(responseBytes, key)
+			c.Response().Header().Set("HashSHA256", hex.EncodeToString(resHash))
 
 			return err
 		}

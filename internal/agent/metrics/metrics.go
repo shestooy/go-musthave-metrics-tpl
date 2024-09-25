@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
@@ -72,6 +73,17 @@ func Compress(m []Metric) ([]byte, error) {
 		return nil, err
 	}
 	if err = w.Close(); err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func GetMetricsAsBody(m []Metric) ([]byte, error) {
+	var buf bytes.Buffer
+	w := bufio.NewWriter(&buf)
+	err := json.NewEncoder(w).Encode(m)
+	if err != nil {
 		log.Println(err.Error())
 		return nil, err
 	}
