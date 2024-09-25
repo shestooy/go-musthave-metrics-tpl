@@ -46,7 +46,7 @@ func Hash(key string) echo.MiddlewareFunc {
 			}
 
 			if !hmac.Equal(bodyHash, resHash) {
-				return c.String(http.StatusBadRequest, "the hash checksum did not match")
+				return c.JSON(http.StatusBadRequest, map[string]string{"err": "the hash checksum did not match"})
 			}
 
 			resBody := new(strings.Builder)
@@ -55,7 +55,7 @@ func Hash(key string) echo.MiddlewareFunc {
 
 			err = next(c)
 			if err != nil {
-				c.Error(err)
+				return err
 			}
 
 			responseBytes := []byte(resBody.String())
