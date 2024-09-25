@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/hex"
 	"github.com/labstack/echo/v4"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
@@ -171,9 +172,9 @@ func TestHashMiddleware(t *testing.T) {
 			if tc.key != "" {
 				bodyHash := hash([]byte(tc.requestBody), tc.key)
 				if tc.modifyHash {
-					bodyHash = "invalidHash"
+					bodyHash = []byte("invalidHash")
 				}
-				req.Header.Set("HashSHA256", bodyHash)
+				req.Header.Set("HashSHA256", hex.EncodeToString(bodyHash))
 			}
 
 			rec := httptest.NewRecorder()
