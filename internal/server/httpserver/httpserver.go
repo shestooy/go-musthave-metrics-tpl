@@ -83,6 +83,7 @@ func initServer() *Server {
 
 	e.Use(middlewares.Gzip)
 	e.Use(middlewares.Logging)
+	e.Use(middlewares.Hash(f.ServerKey))
 
 	e.GET("/", handlers.GetAllMetrics)
 	e.GET("/ping", handlers.PingHandler)
