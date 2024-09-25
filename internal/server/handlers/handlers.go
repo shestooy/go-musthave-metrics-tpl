@@ -1,35 +1,31 @@
 package handlers
 
 import (
-	"encoding/json"
 	"github.com/avast/retry-go"
-	"github.com/go-chi/chi/v5"
+	"github.com/labstack/echo/v4"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/utils"
 	"go.uber.org/zap"
 	"html/template"
-	"log"
 	"net/http"
 	"strings"
 )
 
-func PostMetricsWithJSON(res http.ResponseWriter, req *http.Request) {
-	if !strings.Contains(req.Header.Get("Content-Type"), "application/json") {
-		http.Error(res, "bad request", http.StatusBadRequest)
-		return
+func PostMetricsWithJSON(c echo.Context) error {
+	if !strings.Contains(c.Request().Header.Get("Content-Type"), "application/json") {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad request"})
 	}
 
 	var m = model.Metrics{}
-	if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
-		http.Error(res, "bad request", http.StatusBadRequest)
-		return
+	if err := c.Bind(&m); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad request"})
 	}
 
 	err := retry.Do(func() error {
 		var err error
-		m, err = storage.MStorage.SaveMetric(req.Context(), m)
+		m, err = storage.MStorage.SaveMetric(c.Request().Context(), m)
 		if err != nil {
 			if !utils.IsRetriableError(err) {
 				return retry.Unrecoverable(err)
@@ -42,37 +38,22 @@ func PostMetricsWithJSON(res http.ResponseWriter, req *http.Request) {
 		retry.DelayType(utils.RetryDelay))
 	if err != nil {
 		logger.Log.Error("err", zap.Error(err))
-		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	res.Header().Set("Content-Type", "application/json")
-	resp, err := json.Marshal(&m)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	res.WriteHeader(http.StatusOK)
-	_, err = res.Write(resp)
-	if err != nil {
-		log.Println(err.Error())
-	}
-	err = req.Body.Close()
-	if err != nil {
-		log.Println(err.Error())
-	}
+	return c.JSON(http.StatusOK, m)
 }
 
-func PostMetrics(res http.ResponseWriter, req *http.Request) {
-	params := make([]string, 3)
-	params[0] = chi.URLParam(req, "type")
-	params[1] = chi.URLParam(req, "name")
-	params[2] = chi.URLParam(req, "value")
+func PostMetrics(c echo.Context) error {
+	params := []string{
+		c.Param("type"),
+		c.Param("name"),
+		c.Param("value"),
+	}
 
 	for _, param := range params {
 		if param == "" {
-			http.Error(res, "invalid params", http.StatusBadRequest)
-			return
+			return c.String(http.StatusBadRequest, "invalid params")
 		}
 	}
 	var m = model.Metrics{
@@ -81,11 +62,10 @@ func PostMetrics(res http.ResponseWriter, req *http.Request) {
 	}
 	err := m.SetValue(params[2])
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
+		return c.String(http.StatusBadRequest, err.Error())
 	}
 	err = retry.Do(func() error {
-		_, err = storage.MStorage.SaveMetric(req.Context(), m)
+		_, err = storage.MStorage.SaveMetric(c.Request().Context(), m)
 		if err != nil {
 			if !utils.IsRetriableError(err) {
 				return retry.Unrecoverable(err)
@@ -97,25 +77,23 @@ func PostMetrics(res http.ResponseWriter, req *http.Request) {
 		retry.Attempts(4),
 		retry.DelayType(utils.RetryDelay))
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
+		logger.Log.Error("err", zap.Error(err))
+		return c.String(http.StatusBadRequest, err.Error())
 	}
-	res.Header().Set("Content-Type", "text/plain")
+	return c.String(http.StatusOK, "200 - OK")
 }
 
-func GetMetricIDWithJSON(res http.ResponseWriter, req *http.Request) {
-	if !strings.Contains(req.Header.Get("Content-Type"), "application/json") {
-		http.Error(res, "bad request", http.StatusBadRequest)
-		return
+func GetMetricIDWithJSON(c echo.Context) error {
+	if !strings.Contains(c.Request().Header.Get("Content-Type"), "application/json") {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad request"})
 	}
 	var m = model.Metrics{}
-	if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
-		http.Error(res, "bad request", http.StatusBadRequest)
-		return
+	if err := c.Bind(&m); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad request"})
 	}
 	err := retry.Do(func() error {
 		var err error
-		m, err = storage.MStorage.GetByID(req.Context(), m.ID)
+		m, err = storage.MStorage.GetByID(c.Request().Context(), m.ID)
 		if err != nil {
 			if !utils.IsRetriableError(err) {
 				return retry.Unrecoverable(err)
@@ -129,42 +107,27 @@ func GetMetricIDWithJSON(res http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		logger.Log.Error("err", zap.Error(err))
-		http.Error(res, err.Error(), http.StatusNotFound)
-		return
+		return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 	}
 
-	res.Header().Set("Content-Type", "application/json")
-	resp, err := json.Marshal(&m)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	res.WriteHeader(http.StatusOK)
-	_, err = res.Write(resp)
-	if err != nil {
-		log.Println(err.Error())
-	}
-	err = req.Body.Close()
-	if err != nil {
-		log.Println(err.Error())
-	}
+	return c.JSON(http.StatusOK, m)
 }
 
-func GetMetricID(res http.ResponseWriter, req *http.Request) {
-	params := make([]string, 2)
-	params[0] = chi.URLParam(req, "type")
-	params[1] = chi.URLParam(req, "name")
+func GetMetricID(c echo.Context) error {
+	params := []string{
+		c.Param("type"),
+		c.Param("name"),
+	}
 
 	for _, param := range params {
 		if param == "" {
-			http.Error(res, "invalid params", http.StatusNotFound)
-			return
+			return c.String(http.StatusNotFound, "invalid params")
 		}
 	}
 	var m = model.Metrics{}
 	err := retry.Do(func() error {
 		var err error
-		m, err = storage.MStorage.GetByID(req.Context(), params[1])
+		m, err = storage.MStorage.GetByID(c.Request().Context(), params[1])
 		if err != nil {
 			if !utils.IsRetriableError(err) {
 				return retry.Unrecoverable(err)
@@ -177,22 +140,17 @@ func GetMetricID(res http.ResponseWriter, req *http.Request) {
 		retry.DelayType(utils.RetryDelay))
 
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusNotFound)
-		return
+		return c.String(http.StatusNotFound, err.Error())
 	}
-	res.Header().Set("Content-Type", "text/plain")
-	_, err = res.Write([]byte(m.GetValueAsString()))
-	if err != nil {
-		log.Println(err.Error())
-	}
+	return c.String(http.StatusOK, m.GetValueAsString())
 }
 
-func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
+func GetAllMetrics(c echo.Context) error {
 	var metrics = map[string]model.Metrics{}
 
 	err := retry.Do(func() error {
 		var err error
-		metrics, err = storage.MStorage.GetAllMetrics(req.Context())
+		metrics, err = storage.MStorage.GetAllMetrics(c.Request().Context())
 		if err != nil {
 			if !utils.IsRetriableError(err) {
 				return retry.Unrecoverable(err)
@@ -205,8 +163,7 @@ func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
 		retry.DelayType(utils.RetryDelay))
 
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 	counters := make(map[string]model.Metrics)
 	gauges := make(map[string]model.Metrics)
@@ -220,7 +177,6 @@ func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	res.Header().Set("Content-Type", "text/html; charset=utf-8")
 	tmp := `
 		<!DOCTYPE html>
 		<html>
@@ -268,8 +224,7 @@ func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
 		},
 		}).Parse(tmp)
 	if err != nil {
-		http.Error(res, "the template could not be executed", http.StatusInternalServerError)
-		return
+		return c.String(http.StatusInternalServerError, "the template could not be executed")
 	}
 
 	data := struct {
@@ -280,33 +235,35 @@ func GetAllMetrics(res http.ResponseWriter, req *http.Request) {
 		Gauges:   gauges,
 	}
 
-	err = t.Execute(res, data)
-	if err != nil {
-		http.Error(res, "the template could not be executed", http.StatusInternalServerError)
+	c.Response().Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	if err = t.Execute(c.Response().Writer, data); err != nil {
+		return c.String(http.StatusInternalServerError, "the template could not be executed")
 	}
+	return nil
 }
 
-func PingHandler(res http.ResponseWriter, req *http.Request) {
-	err := storage.MStorage.Ping(req.Context())
+func PingHandler(c echo.Context) error {
+	err := storage.MStorage.Ping(c.Request().Context())
 	if err != nil {
-		http.Error(res, "failed to connect to the database", http.StatusInternalServerError)
-		return
+		return c.String(http.StatusInternalServerError, "failed to connect to the database")
 	}
+	return c.String(http.StatusOK, "Pong")
 }
 
-func UpdateSomeMetrics(res http.ResponseWriter, req *http.Request) {
-	if !strings.Contains(req.Header.Get("Content-Type"), "application/json") {
-		http.Error(res, "bad request", http.StatusBadRequest)
-		return
+func UpdateSomeMetrics(c echo.Context) error {
+	if !strings.Contains(c.Request().Header.Get("Content-Type"), "application/json") {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad request"})
 	}
+
 	var metrics []model.Metrics
-	var err error
-	if err = json.NewDecoder(req.Body).Decode(&metrics); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
+	if err := c.Bind(&metrics); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
-	err = retry.Do(func() error {
-		metrics, err = storage.MStorage.SaveMetrics(req.Context(), metrics)
+
+	err := retry.Do(func() error {
+		var err error
+		metrics, err = storage.MStorage.SaveMetrics(c.Request().Context(), metrics)
 		if err != nil {
 			if !utils.IsRetriableError(err) {
 				return retry.Unrecoverable(err)
@@ -315,24 +272,10 @@ func UpdateSomeMetrics(res http.ResponseWriter, req *http.Request) {
 		}
 		return nil
 	})
+
 	if err != nil {
 		logger.Log.Error("err", zap.Error(err))
-		http.Error(res, err.Error(), http.StatusBadRequest)
-		return
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
-	res.Header().Set("Content-Type", "application/json")
-	resp, err := json.Marshal(&metrics)
-	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	res.WriteHeader(http.StatusOK)
-	_, err = res.Write(resp)
-	if err != nil {
-		log.Println(err.Error())
-	}
-	err = req.Body.Close()
-	if err != nil {
-		log.Println(err.Error())
-	}
+	return c.JSON(http.StatusOK, metrics)
 }

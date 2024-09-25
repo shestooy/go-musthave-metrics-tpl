@@ -12,7 +12,7 @@ import (
 
 func TestMemStorage_Init(t *testing.T) {
 	flags.Restore = false
-	flags.StorageInterval = 5000
+	flags.SetStorageInterval(5000)
 	MStorage = &Storage{}
 	err := MStorage.Init(context.Background())
 	require.NoError(t, err)
@@ -20,7 +20,7 @@ func TestMemStorage_Init(t *testing.T) {
 
 func TestStorage_UpdateMetric(t *testing.T) {
 	flags.Restore = false
-	flags.StorageInterval = 5000
+	flags.SetStorageInterval(5000)
 	MStorage = &Storage{}
 	err := MStorage.Init(context.Background())
 	require.NoError(t, err)
@@ -42,7 +42,7 @@ func TestStorage_UpdateMetric(t *testing.T) {
 
 func TestMemStorage_GetMetricID(t *testing.T) {
 	flags.Restore = false
-	flags.StorageInterval = 5000
+	flags.SetStorageInterval(5000)
 	MStorage = &Storage{}
 	err := MStorage.Init(context.Background())
 	require.NoError(t, err)
@@ -67,7 +67,7 @@ func TestMemStorage_GetMetricID(t *testing.T) {
 
 func TestStorage_GetAllMetrics(t *testing.T) {
 	flags.Restore = false
-	flags.StorageInterval = 5000
+	flags.SetStorageInterval(5000)
 	MStorage = &Storage{}
 	err := MStorage.Init(context.Background())
 	require.NoError(t, err)

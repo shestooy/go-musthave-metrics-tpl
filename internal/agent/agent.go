@@ -1,6 +1,9 @@
 package agent
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"github.com/avast/retry-go"
 	m "github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent/metrics"
 	f "github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
@@ -22,10 +25,18 @@ func postMetrics(url string, metrics []m.Metric) error {
 		log.Printf("error compress procedure. Err : %s", err.Error())
 		return err
 	}
+	uncompressedBody, err := m.GetMetricsAsBody(metrics)
+	if err != nil {
+		log.Printf("error convert procedure. Err : %s", err.Error())
+		return err
+	}
+	hash := getHash(uncompressedBody, f.AgentKey)
+
 	err = retry.Do(func() error {
 		resp, err := client.R().
 			SetHeader("Content-Type", "application/json").
 			SetHeader("Content-Encoding", "gzip").
+			SetHeader("HashSHA256", hash).
 			SetBody(body).
 			Post("http://" + url + "/updates/")
 
@@ -48,6 +59,12 @@ func postMetrics(url string, metrics []m.Metric) error {
 		retry.Attempts(4),
 		retry.DelayType(utils.RetryDelay))
 	return err
+}
+
+func getHash(body []byte, key string) string {
+	h := hmac.New(sha256.New, []byte(key))
+	h.Write(body)
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func Start() {

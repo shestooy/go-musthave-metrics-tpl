@@ -3,13 +3,14 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"github.com/labstack/echo/v4"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/middlewares"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,28 +26,36 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) int {
 	return resp.StatusCode
 }
 
-// взять функцию getRouter из httpserver мешает цикличный импорт
-func testServer(t *testing.T) chi.Router {
+func testServer(t *testing.T) *echo.Echo {
 	flags.Restore = false
-	flags.StorageInterval = 5000
+	flags.SetStorageInterval(5000)
 
 	storage.MStorage = &storage.Storage{}
 	err := storage.MStorage.Init(context.Background())
-
 	require.NoError(t, err)
 
-	r := chi.NewRouter()
+	e := echo.New()
 
-	r.Get("/", GetAllMetrics)
-	r.Route("/update", func(r chi.Router) {
-		r.Post("/", PostMetricsWithJSON)
-		r.Post("/{type}/{name}/{value}", PostMetrics)
-	})
-	r.Route("/value", func(r chi.Router) {
-		r.Post("/", GetMetricIDWithJSON)
-		r.Get("/{type}/{name}", GetMetricID)
-	})
-	return r
+	e.HideBanner = true
+	e.HidePort = true
+
+	e.Use(middlewares.Gzip)
+	e.Use(middlewares.Logging)
+	e.Use(middlewares.Hash(flags.ServerKey))
+
+	e.GET("/", GetAllMetrics)
+	e.GET("/ping", PingHandler)
+
+	e.POST("/updates/", UpdateSomeMetrics)
+
+	updateGroup := e.Group("/update")
+	updateGroup.POST("/", PostMetricsWithJSON)
+	updateGroup.POST("/:type/:name/:value", PostMetrics)
+
+	valueGroup := e.Group("/value")
+	valueGroup.POST("/", GetMetricIDWithJSON)
+	valueGroup.GET("/:type/:name", GetMetricID)
+	return e
 }
 
 func TestChangeMetric(t *testing.T) {
@@ -224,7 +233,7 @@ func TestGetMetricIDWithJSON(t *testing.T) {
 		{
 			name:         "method_post_without_body",
 			method:       http.MethodPost,
-			expectedCode: http.StatusBadRequest,
+			expectedCode: http.StatusNotFound,
 			expectedBody: "",
 		},
 		{

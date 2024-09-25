@@ -2,15 +2,13 @@ package httpserver
 
 import (
 	"context"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/labstack/echo/v4"
 	f "github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/handlers"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/middlewares"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"go.uber.org/zap"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -30,12 +28,13 @@ func Start() error {
 
 	l.Log.Info("Running server", zap.String("address", f.ServerEndPoint))
 
+	server := initServer()
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
 	serverErr := make(chan error, 1)
 	go func() {
-		serverErr <- http.ListenAndServe(f.ServerEndPoint, GetRouter())
+		serverErr <- server.Start(f.ServerEndPoint)
 	}()
 
 	select {
@@ -45,6 +44,9 @@ func Start() error {
 		}
 	case <-stop:
 		l.Log.Info("Shutting down...")
+		if err := server.Stop(ctx); err != nil {
+			l.Log.Info("Error shutting down", zap.Error(err))
+		}
 		cancel()
 	}
 
@@ -54,32 +56,6 @@ func Start() error {
 
 	l.Log.Info("Server shutdown complete")
 	return nil
-}
-
-func GetRouter() chi.Router {
-	r := chi.NewRouter()
-
-	r.Use(middlewares.LoggingMiddleware)
-	r.Use(middlewares.GzipMiddleware)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Recoverer)
-
-	r.Get("/", handlers.GetAllMetrics)
-	r.Get("/ping", handlers.PingHandler)
-
-	r.Post("/updates/", handlers.UpdateSomeMetrics)
-
-	r.Route("/update", func(r chi.Router) {
-		r.Post("/", handlers.PostMetricsWithJSON)
-		r.Post("/{type}/{name}/{value}", handlers.PostMetrics)
-	})
-
-	r.Route("/value", func(r chi.Router) {
-		r.Post("/", handlers.GetMetricIDWithJSON)
-		r.Get("/{type}/{name}", handlers.GetMetricID)
-	})
-
-	return r
 }
 
 func initializeStorage(ctx context.Context) error {
@@ -93,4 +69,42 @@ func initializeStorage(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+type Server struct {
+	server *echo.Echo
+}
+
+func initServer() *Server {
+	e := echo.New()
+
+	e.HideBanner = true
+	e.HidePort = true
+
+	e.Use(middlewares.Gzip)
+	e.Use(middlewares.Logging)
+	e.Use(middlewares.Hash(f.ServerKey))
+
+	e.GET("/", handlers.GetAllMetrics)
+	e.GET("/ping", handlers.PingHandler)
+
+	e.POST("/updates/", handlers.UpdateSomeMetrics)
+
+	updateGroup := e.Group("/update")
+	updateGroup.POST("/", handlers.PostMetricsWithJSON)
+	updateGroup.POST("/:type/:name/:value", handlers.PostMetrics)
+
+	valueGroup := e.Group("/value")
+	valueGroup.POST("/", handlers.GetMetricIDWithJSON)
+	valueGroup.GET("/:type/:name", handlers.GetMetricID)
+
+	return &Server{server: e}
+}
+
+func (s *Server) Start(endPoint string) error {
+	return s.server.Start(endPoint)
+}
+
+func (s *Server) Stop(ctx context.Context) error {
+	return s.server.Server.Shutdown(ctx)
 }

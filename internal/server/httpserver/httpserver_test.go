@@ -14,8 +14,8 @@ func TestGetRouter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := GetRouter()
-			assert.NotEmpty(t, r)
+			s := initServer()
+			assert.NotEmpty(t, s)
 		})
 	}
 }

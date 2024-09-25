@@ -37,10 +37,11 @@ type Storage struct {
 }
 
 func (m *Storage) Init(ctx context.Context) error {
+	m.mu.Lock()
 	m.Metrics = make(map[string]model.Metrics)
+	m.mu.Unlock()
 
-	go startSaveMetrics(ctx, m)
-
+	go m.startSaveMetrics(ctx)
 	return m.restore(ctx)
 }
 
@@ -64,8 +65,8 @@ func (m *Storage) SaveMetric(ctx context.Context, metric model.Metrics) (model.M
 		m.Metrics[metric.ID] = metric
 	}
 
-	if flags.StorageInterval == 0 {
-		return metric, WriteInFile(ctx, m)
+	if flags.GetStorageInterval() == 0 {
+		return metric, m.writeInFile(ctx)
 	}
 	return metric, nil
 }
@@ -134,7 +135,7 @@ func (m *Storage) restore(ctx context.Context) error {
 	return nil
 }
 
-func WriteInFile(ctx context.Context, m *Storage) error {
+func (m *Storage) writeInFile(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -163,7 +164,7 @@ func (m *Storage) Ping(_ context.Context) error {
 }
 
 func (m *Storage) Close() error {
-	if err := WriteInFile(context.Background(), m); err != nil {
+	if err := m.writeInFile(context.Background()); err != nil {
 		l.Log.Info("error saving metrics", zap.Error(err))
 		return err
 	}
@@ -171,15 +172,15 @@ func (m *Storage) Close() error {
 	return nil
 }
 
-func startSaveMetrics(ctx context.Context, m *Storage) {
-	if flags.StorageInterval > 0 {
-		ticker := time.NewTicker(time.Duration(flags.StorageInterval) * time.Second)
+func (m *Storage) startSaveMetrics(ctx context.Context) {
+	if flags.GetStorageInterval() > 0 {
+		ticker := time.NewTicker(time.Duration(flags.GetStorageInterval()) * time.Second)
 		defer ticker.Stop()
 
 		for {
 			select {
 			case <-ticker.C:
-				if err := WriteInFile(ctx, m); err != nil {
+				if err := m.writeInFile(ctx); err != nil {
 					l.Log.Info("error saving metrics", zap.Error(err))
 				}
 			case <-ctx.Done():
