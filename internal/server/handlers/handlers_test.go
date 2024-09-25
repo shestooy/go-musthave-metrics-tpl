@@ -41,6 +41,7 @@ func testServer(t *testing.T) *echo.Echo {
 
 	e.Use(middlewares.Gzip)
 	e.Use(middlewares.Logging)
+	e.Use(middlewares.Hash(flags.ServerKey))
 
 	e.GET("/", GetAllMetrics)
 	e.GET("/ping", PingHandler)
