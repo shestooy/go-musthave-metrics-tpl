@@ -34,13 +34,16 @@ func Hash(key string) echo.MiddlewareFunc {
 
 			body, err := io.ReadAll(c.Request().Body)
 			if err != nil {
-				return err
+				c.Error(err)
 			}
 			c.Request().Body = io.NopCloser(strings.NewReader(string(body)))
 			bodyHash := hash(body, key)
 
 			reqBodyHash := c.Request().Header.Get("HashSHA256")
 			resHash, err := hex.DecodeString(reqBodyHash)
+			if err != nil {
+				c.Error(err)
+			}
 
 			if !hmac.Equal(bodyHash, resHash) {
 				return c.String(http.StatusBadRequest, "the hash checksum did not match")
