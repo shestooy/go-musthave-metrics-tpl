@@ -38,9 +38,9 @@ type Storage struct {
 
 func (m *Storage) Init(ctx context.Context) error {
 	m.Metrics = make(map[string]model.Metrics)
-
+	m.mu.Lock()
 	go startSaveMetrics(ctx, m)
-
+	m.mu.Unlock()
 	return m.restore(ctx)
 }
 
