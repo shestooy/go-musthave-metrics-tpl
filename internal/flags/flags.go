@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"strconv"
+	"sync"
 )
 
 var (
@@ -14,6 +15,7 @@ var (
 	Restore         bool
 	AddrDB          string
 	ServerKey       string
+	mu              sync.RWMutex
 )
 
 func ParseServerFlags() error {
@@ -56,6 +58,17 @@ func ParseServerFlags() error {
 		ServerKey = envServerKey
 	}
 	return nil
+}
+
+func GetStorageInterval() int64 {
+	mu.RLock()
+	defer mu.RUnlock()
+	return StorageInterval
+}
+func SetStorageInterval(v int64) {
+	mu.Lock()
+	defer mu.Unlock()
+	StorageInterval = v
 }
 
 var (

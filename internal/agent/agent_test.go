@@ -19,7 +19,7 @@ import (
 
 func testServer(t *testing.T) *echo.Echo {
 	flags.Restore = false
-	flags.StorageInterval = 5000
+	flags.SetStorageInterval(5000)
 
 	storage.MStorage = &storage.Storage{}
 	err := storage.MStorage.Init(context.Background())
@@ -47,7 +47,7 @@ func TestPostMetrics(t *testing.T) {
 	defer s.Close()
 
 	flags.Restore = false
-	flags.StorageInterval = 5000
+	flags.SetStorageInterval(5000)
 	storage.MStorage = &storage.Storage{}
 	err := storage.MStorage.Init(context.Background())
 	require.NoError(t, err)

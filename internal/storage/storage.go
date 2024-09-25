@@ -65,7 +65,7 @@ func (m *Storage) SaveMetric(ctx context.Context, metric model.Metrics) (model.M
 		m.Metrics[metric.ID] = metric
 	}
 
-	if flags.StorageInterval == 0 {
+	if flags.GetStorageInterval() == 0 {
 		return metric, m.writeInFile(ctx)
 	}
 	return metric, nil
@@ -173,8 +173,8 @@ func (m *Storage) Close() error {
 }
 
 func (m *Storage) startSaveMetrics(ctx context.Context) {
-	if flags.StorageInterval > 0 {
-		ticker := time.NewTicker(time.Duration(flags.StorageInterval) * time.Second)
+	if flags.GetStorageInterval() > 0 {
+		ticker := time.NewTicker(time.Duration(flags.GetStorageInterval()) * time.Second)
 		defer ticker.Stop()
 
 		for {

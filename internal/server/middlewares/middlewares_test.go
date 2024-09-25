@@ -51,7 +51,7 @@ func TestGzipCompression(t *testing.T) {
 	require.NoError(t, err)
 
 	flags.Restore = false
-	flags.StorageInterval = 5000
+	flags.SetStorageInterval(5000)
 
 	e := echo.New()
 	e.POST("/update/", Gzip(handlers.PostMetricsWithJSON))
