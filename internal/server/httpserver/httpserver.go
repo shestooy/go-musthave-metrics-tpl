@@ -2,6 +2,10 @@ package httpserver
 
 import (
 	"context"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/labstack/echo/v4"
 	f "github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
@@ -9,9 +13,6 @@ import (
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/middlewares"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"go.uber.org/zap"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 func Start() error {

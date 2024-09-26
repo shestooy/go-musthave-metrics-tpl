@@ -5,6 +5,12 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/hex"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
 	"github.com/labstack/echo/v4"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
@@ -12,11 +18,6 @@ import (
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
 )
 
 func TestLoggingMiddleware(t *testing.T) {

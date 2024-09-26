@@ -1,6 +1,10 @@
 package handlers
 
 import (
+	"html/template"
+	"net/http"
+	"strings"
+
 	"github.com/avast/retry-go"
 	"github.com/labstack/echo/v4"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
@@ -8,9 +12,6 @@ import (
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/utils"
 	"go.uber.org/zap"
-	"html/template"
-	"net/http"
-	"strings"
 )
 
 func PostMetricsWithJSON(c echo.Context) error {

@@ -5,11 +5,12 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"github.com/shirou/gopsutil/v4/mem"
-	"go.uber.org/zap"
 	"log"
 	"math/rand"
 	"runtime"
+
+	"github.com/shirou/gopsutil/v4/mem"
+	"go.uber.org/zap"
 )
 
 const (

@@ -3,13 +3,14 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/labstack/echo/v4"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/middlewares"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
-	"net/http"
-	"net/http/httptest"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

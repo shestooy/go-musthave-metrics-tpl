@@ -1,13 +1,14 @@
 package agent
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent/metrics"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent/workers"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	"go.uber.org/zap"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 func Start() error {

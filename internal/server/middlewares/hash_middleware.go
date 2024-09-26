@@ -4,10 +4,11 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/labstack/echo/v4"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/labstack/echo/v4"
 )
 
 type responseWriter struct {

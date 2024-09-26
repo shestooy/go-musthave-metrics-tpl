@@ -1,10 +1,11 @@
 package middlewares
 
 import (
+	"time"
+
 	"github.com/labstack/echo/v4"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
 	"go.uber.org/zap"
-	"time"
 )
 
 type logEntry struct {

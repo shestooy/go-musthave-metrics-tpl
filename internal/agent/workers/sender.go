@@ -4,16 +4,17 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/avast/retry-go"
 	"github.com/go-resty/resty/v2"
 	m "github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent/metrics"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent/semaphore"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/utils"
 	"go.uber.org/zap"
-	"net/http"
-	"strings"
-	"sync"
-	"time"
 )
 
 type Sender struct {

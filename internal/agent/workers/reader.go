@@ -1,9 +1,10 @@
 package workers
 
 import (
+	"time"
+
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent/metrics"
 	"go.uber.org/zap"
-	"time"
 )
 
 type ReadWorker struct {
