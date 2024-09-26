@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"github.com/shirou/gopsutil/v4/mem"
+	"go.uber.org/zap"
 	"log"
 	"math/rand"
 	"runtime"
@@ -22,12 +24,13 @@ type Metric struct {
 	Value *float64 `json:"value,omitempty"`
 }
 
-var PollCount int64
-
-func GetAllMetrics() []Metric {
+func GetRuntimeMetrics() []Metric {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	float64Ptr := func(val float64) *float64 {
+		return &val
+	}
+	int64Ptr := func(val int64) *int64 {
 		return &val
 	}
 	return []Metric{
@@ -59,6 +62,23 @@ func GetAllMetrics() []Metric {
 		{MType: Gauge, ID: "Sys", Value: float64Ptr(float64(m.Sys))},
 		{MType: Gauge, ID: "TotalAlloc", Value: float64Ptr(float64(m.TotalAlloc))},
 		{MType: Gauge, ID: "RandomValue", Value: float64Ptr(rand.Float64())},
+		{MType: Counter, ID: "PollCount", Delta: int64Ptr(1)},
+	}
+}
+
+func GetMemoryMetrics(log *zap.SugaredLogger) []Metric {
+	m, err := mem.VirtualMemory()
+	if err != nil {
+		log.Error("Error getting memory metrics: ", err)
+		return nil
+	}
+	float64Ptr := func(val float64) *float64 {
+		return &val
+	}
+	return []Metric{
+		{MType: Gauge, ID: "TotalMemory", Value: float64Ptr(float64(m.Total))},
+		{MType: Gauge, ID: "FreeMemory", Value: float64Ptr(float64(m.Free))},
+		{MType: Gauge, ID: "UsedMemory", Value: float64Ptr(m.UsedPercent)},
 	}
 }
 

@@ -75,6 +75,7 @@ var (
 	AgentEndPoint  string
 	ReportInterval int64
 	PollInterval   int64
+	RateLimit      int64
 	AgentKey       string
 )
 
@@ -83,6 +84,7 @@ func ParseAgentFlag() error {
 	flag.Int64Var(&ReportInterval, "r", 10, "frequency of report metrics")
 	flag.Int64Var(&PollInterval, "p", 2, "the frequency of the metric survey")
 	flag.StringVar(&AgentKey, "k", "", "the agent key for HashSHA256")
+	flag.Int64Var(&RateLimit, "l", 5, "the maximum number of metrics to report at once")
 	flag.Parse()
 
 	var err error
@@ -104,6 +106,12 @@ func ParseAgentFlag() error {
 	}
 	if envAgentKey := os.Getenv("KEY"); envAgentKey != "" {
 		AgentKey = envAgentKey
+	}
+	if envRateLimit := os.Getenv("RATE_LIMIT"); envRateLimit != "" {
+		RateLimit, err = strconv.ParseInt(envRateLimit, 10, 64)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

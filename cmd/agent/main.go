@@ -12,5 +12,7 @@ func main() {
 		log.Fatal("parse flag for agent failed")
 	}
 
-	a.Start()
+	if err = a.Start(); err != nil {
+		log.Fatal(err)
+	}
 }

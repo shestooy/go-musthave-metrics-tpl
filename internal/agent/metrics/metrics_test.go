@@ -14,7 +14,7 @@ func Test_getAllMetrics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.NotEmpty(t, GetAllMetrics(), "failed to collect metrics")
+			assert.NotEmpty(t, GetRuntimeMetrics(), "failed to collect metrics")
 		})
 	}
 }
