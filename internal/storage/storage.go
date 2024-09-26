@@ -112,7 +112,7 @@ func (m *Storage) restore(ctx context.Context) error {
 	default:
 	}
 
-	if !flags.Restore {
+	if !flags.GetRestoreFlag() {
 		return nil
 	}
 

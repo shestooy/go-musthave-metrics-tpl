@@ -70,6 +70,17 @@ func SetStorageInterval(v int64) {
 	defer mu.Unlock()
 	StorageInterval = v
 }
+func GetRestoreFlag() bool {
+	mu.RLock()
+	defer mu.RUnlock()
+	return Restore
+}
+
+func SetRestoreFlag(v bool) {
+	mu.Lock()
+	defer mu.Unlock()
+	Restore = v
+}
 
 var (
 	AgentEndPoint  string

@@ -51,7 +51,7 @@ func TestGzipCompression(t *testing.T) {
 	err := storage.MStorage.Init(context.Background())
 	require.NoError(t, err)
 
-	flags.Restore = false
+	flags.SetRestoreFlag(false)
 	flags.SetStorageInterval(5000)
 
 	e := echo.New()

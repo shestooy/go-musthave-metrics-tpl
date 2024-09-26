@@ -28,7 +28,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) int {
 }
 
 func testServer(t *testing.T) *echo.Echo {
-	flags.Restore = false
+	flags.SetRestoreFlag(false)
 	flags.SetStorageInterval(5000)
 
 	storage.MStorage = &storage.Storage{}
