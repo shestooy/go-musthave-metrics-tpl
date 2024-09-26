@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	Gauge   = "gauge"
-	Counter = "counter"
+	Gauge = "gauge"
 )
 
 type Metric struct {
@@ -29,9 +28,6 @@ func GetRuntimeMetrics() []Metric {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	float64Ptr := func(val float64) *float64 {
-		return &val
-	}
-	int64Ptr := func(val int64) *int64 {
 		return &val
 	}
 	return []Metric{
@@ -63,7 +59,6 @@ func GetRuntimeMetrics() []Metric {
 		{MType: Gauge, ID: "Sys", Value: float64Ptr(float64(m.Sys))},
 		{MType: Gauge, ID: "TotalAlloc", Value: float64Ptr(float64(m.TotalAlloc))},
 		{MType: Gauge, ID: "RandomValue", Value: float64Ptr(rand.Float64())},
-		{MType: Counter, ID: "PollCount", Delta: int64Ptr(1)},
 	}
 }
 

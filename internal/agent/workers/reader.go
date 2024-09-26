@@ -35,6 +35,9 @@ func (r *ReadWorker) Start() {
 		case <-r.intervalTicker.C:
 			r.dataChan <- metrics.GetRuntimeMetrics()
 			r.dataChan <- metrics.GetMemoryMetrics(r.logger)
+			r.dataChan <- []metrics.Metric{{MType: "counter", ID: "PollCount", Delta: func(val int64) *int64 {
+				return &val
+			}(1)}}
 		}
 	}
 }

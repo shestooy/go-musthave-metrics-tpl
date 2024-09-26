@@ -61,6 +61,7 @@ func (s *Sender) Start() {
 		case <-s.sendTicker.C:
 			s.wg.Add(1)
 			go s.sendMetrics(metrics)
+			metrics = make([]m.Metric, 0)
 		}
 	}
 }
@@ -107,7 +108,6 @@ func (s *Sender) sendMetrics(metrics []m.Metric) {
 			}
 			return err
 		}
-
 		if resp.StatusCode() != http.StatusOK {
 			s.logger.Error("unexpected status code. Expected code 200, got %d.", resp.StatusCode())
 		}
