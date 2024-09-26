@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    volumes:
+      - pgData:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: metrics
+    ports:
+      - "5432:5432"
+
+
+  server:
+    build: .
+    container_name: server
+    ports:
+      - "8080:8080"
+    command:
+      - "./server"
+    depends_on:
+      - postgres
+    environment:
+      ADDRESS: server:8080
+      LOG_LEVEL: info
+      DATABASE_DSN: postgresql://postgres:root@postgres:5432/metrics
+      KEY: HashKey
+    volumes:
+      - ./db/migrations:/app/db/migrations
+
+
+  agent:
+    build: .
+    container_name: agent
+    depends_on:
+     - server
+    environment:
+      ADDRESS: server:8080
+      REPORT_INTERVAL: 10
+      POLL_INTERVAL: 2
+      KEY: HashKey
+      RATE_LIMIT: 10
+    command: "./agent"
+
+volumes:
+  pgData:
