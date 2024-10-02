@@ -3,13 +3,17 @@ package handlers
 import (
 	"bytes"
 	"context"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-chi/chi/v5"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
+
+	"github.com/labstack/echo/v4"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/config"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/middlewares"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,28 +29,36 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) int {
 	return resp.StatusCode
 }
 
-// взять функцию getRouter из httpserver мешает цикличный импорт
-func testServer(t *testing.T) chi.Router {
-	flags.Restore = false
-	flags.StorageInterval = 5000
+func testServer(t *testing.T) *echo.Echo {
 
-	storage.MStorage = &storage.Storage{}
-	err := storage.MStorage.Init(context.Background())
-
+	MStorage := &storage.Storage{}
+	l, err := logger.Initialize("info")
+	require.NoError(t, err)
+	err = MStorage.Init(context.Background(), l, &config.ServerCfg{Restore: false, StorageInterval: 5000})
 	require.NoError(t, err)
 
-	r := chi.NewRouter()
+	h := NewHandler(l, MStorage)
+	e := echo.New()
 
-	r.Get("/", GetAllMetrics)
-	r.Route("/update", func(r chi.Router) {
-		r.Post("/", PostMetricsWithJSON)
-		r.Post("/{type}/{name}/{value}", PostMetrics)
-	})
-	r.Route("/value", func(r chi.Router) {
-		r.Post("/", GetMetricIDWithJSON)
-		r.Get("/{type}/{name}", GetMetricID)
-	})
-	return r
+	e.HideBanner = true
+	e.HidePort = true
+
+	e.Use(middlewares.Gzip)
+	e.Use(middlewares.GetLogg(l))
+
+	e.GET("/", h.GetAllMetrics)
+	e.GET("/ping", h.PingHandler)
+
+	e.POST("/updates/", h.UpdateSomeMetrics)
+
+	updateGroup := e.Group("/update")
+	updateGroup.POST("/", h.PostMetricsWithJSON)
+	updateGroup.POST("/:type/:name/:value", h.PostMetrics)
+
+	valueGroup := e.Group("/value")
+	valueGroup.POST("/", h.GetMetricIDWithJSON)
+	valueGroup.GET("/:type/:name", h.GetMetricID)
+	return e
 }
 
 func TestChangeMetric(t *testing.T) {
@@ -224,7 +236,7 @@ func TestGetMetricIDWithJSON(t *testing.T) {
 		{
 			name:         "method_post_without_body",
 			method:       http.MethodPost,
-			expectedCode: http.StatusBadRequest,
+			expectedCode: http.StatusNotFound,
 			expectedBody: "",
 		},
 		{

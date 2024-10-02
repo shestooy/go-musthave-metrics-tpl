@@ -2,10 +2,11 @@ package utils
 
 import (
 	"errors"
-	"github.com/avast/retry-go"
-	"github.com/jackc/pgx/v5/pgconn"
 	"net"
 	"time"
+
+	"github.com/avast/retry-go"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func RetryDelay(n uint, _ error, _ *retry.Config) time.Duration {

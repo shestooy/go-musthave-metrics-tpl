@@ -1,16 +1,13 @@
 package main
 
 import (
-	a "github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent"
-	f "github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
 	"log"
+
+	a "github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent"
 )
 
 func main() {
-	err := f.ParseAgentFlag()
-	if err != nil {
-		log.Fatal("parse flag for agent failed")
+	if err := a.Start(); err != nil {
+		log.Fatal(err)
 	}
-
-	a.Start()
 }

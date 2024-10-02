@@ -5,13 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
-	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
-	"go.uber.org/zap"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/config"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
+	"go.uber.org/zap"
 )
 
 const (
@@ -19,10 +19,8 @@ const (
 	counter = "counter"
 )
 
-var MStorage IStorage
-
 type IStorage interface {
-	Init(ctx context.Context) error
+	Init(_ context.Context, l *zap.SugaredLogger, cfg *config.ServerCfg) error
 	SaveMetric(ctx context.Context, m model.Metrics) (model.Metrics, error)
 	GetAllMetrics(ctx context.Context) (map[string]model.Metrics, error)
 	SaveMetrics(ctx context.Context, metrics []model.Metrics) ([]model.Metrics, error)
@@ -34,13 +32,17 @@ type IStorage interface {
 type Storage struct {
 	Metrics map[string]model.Metrics
 	mu      sync.RWMutex
+	logger  *zap.SugaredLogger
+	cfg     *config.ServerCfg
 }
 
-func (m *Storage) Init(ctx context.Context) error {
+func (m *Storage) Init(ctx context.Context, l *zap.SugaredLogger, cfg *config.ServerCfg) error {
+	m.mu.Lock()
 	m.Metrics = make(map[string]model.Metrics)
-
-	go startSaveMetrics(ctx, m)
-
+	m.mu.Unlock()
+	m.logger = l
+	m.cfg = cfg
+	go m.startSaveMetrics(ctx)
 	return m.restore(ctx)
 }
 
@@ -64,8 +66,8 @@ func (m *Storage) SaveMetric(ctx context.Context, metric model.Metrics) (model.M
 		m.Metrics[metric.ID] = metric
 	}
 
-	if flags.StorageInterval == 0 {
-		return metric, WriteInFile(ctx, m)
+	if m.cfg.StorageInterval == 0 {
+		return metric, m.writeInFile(ctx)
 	}
 	return metric, nil
 }
@@ -110,11 +112,11 @@ func (m *Storage) restore(ctx context.Context) error {
 	default:
 	}
 
-	if !flags.Restore {
+	if !m.cfg.Restore {
 		return nil
 	}
 
-	f, err := os.OpenFile(flags.FileStoragePath, os.O_RDONLY|os.O_CREATE, 0666)
+	f, err := os.OpenFile(m.cfg.FileStoragePath, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return err
 	}
@@ -134,7 +136,7 @@ func (m *Storage) restore(ctx context.Context) error {
 	return nil
 }
 
-func WriteInFile(ctx context.Context, m *Storage) error {
+func (m *Storage) writeInFile(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -144,7 +146,7 @@ func WriteInFile(ctx context.Context, m *Storage) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	f, err := os.OpenFile(flags.FileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	f, err := os.OpenFile(m.cfg.FileStoragePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}
@@ -163,24 +165,24 @@ func (m *Storage) Ping(_ context.Context) error {
 }
 
 func (m *Storage) Close() error {
-	if err := WriteInFile(context.Background(), m); err != nil {
-		l.Log.Info("error saving metrics", zap.Error(err))
+	if err := m.writeInFile(context.Background()); err != nil {
+		m.logger.Info("error saving metrics", zap.Error(err))
 		return err
 	}
-	l.Log.Info("Last save in file complete")
+	m.logger.Info("Last save in file complete")
 	return nil
 }
 
-func startSaveMetrics(ctx context.Context, m *Storage) {
-	if flags.StorageInterval > 0 {
-		ticker := time.NewTicker(time.Duration(flags.StorageInterval) * time.Second)
+func (m *Storage) startSaveMetrics(ctx context.Context) {
+	if m.cfg.StorageInterval > 0 {
+		ticker := time.NewTicker(time.Duration(m.cfg.StorageInterval) * time.Second)
 		defer ticker.Stop()
 
 		for {
 			select {
 			case <-ticker.C:
-				if err := WriteInFile(ctx, m); err != nil {
-					l.Log.Info("error saving metrics", zap.Error(err))
+				if err := m.writeInFile(ctx); err != nil {
+					m.logger.Info("error saving metrics", zap.Error(err))
 				}
 			case <-ctx.Done():
 				return

@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/labstack/echo/v4"
 )
 
 type compressWriter struct {
@@ -55,7 +57,7 @@ func newCompressReader(r io.ReadCloser) (*compressReader, error) {
 	}, nil
 }
 
-func (c compressReader) Read(p []byte) (n int, err error) {
+func (c *compressReader) Read(p []byte) (n int, err error) {
 	return c.zr.Read(p)
 }
 
@@ -66,27 +68,29 @@ func (c *compressReader) Close() error {
 	return c.zr.Close()
 }
 
-func GzipMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		w := res
-
+func Gzip(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		res := c.Response()
+		req := c.Request()
 		acceptEnc := req.Header.Get("Accept-Encoding")
-		if ok := strings.Contains(acceptEnc, "gzip"); ok {
-			cw := newCompressWriter(res)
-			w = cw
-			w.Header().Set("Content-Encoding", "gzip")
+
+		if strings.Contains(acceptEnc, "gzip") {
+			cw := newCompressWriter(res.Writer)
+			res.Writer = cw
+			res.Header().Set("Content-Encoding", "gzip")
 			defer cw.Close()
 		}
-		if ok := strings.Contains(req.Header.Get("Content-Encoding"), "gzip"); ok {
+
+		if strings.Contains(req.Header.Get("Content-Encoding"), "gzip") {
 			cr, err := newCompressReader(req.Body)
 			if err != nil {
-				res.WriteHeader(http.StatusInternalServerError)
-				return
+				c.Error(err)
+				return err
 			}
 			req.Body = cr
 			defer cr.Close()
 		}
 
-		next.ServeHTTP(w, req)
-	})
+		return next(c)
+	}
 }

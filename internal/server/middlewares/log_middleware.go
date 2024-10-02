@@ -1,46 +1,68 @@
 package middlewares
 
 import (
-	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
-	"go.uber.org/zap"
-	"net/http"
 	"time"
+
+	"github.com/labstack/echo/v4"
+	"go.uber.org/zap"
 )
 
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-	size       int
+type logEntry struct {
+	Time     string `json:"time"`
+	RemoteIP string `json:"remote_ip"`
+	Host     string `json:"host"`
+	Method   string `json:"method"`
+	URI      string `json:"uri"`
+	Status   int    `json:"status"`
+	Error    string `json:"error,omitempty"`
+	Latency  string `json:"latency_human"`
+	BytesIn  int64  `json:"bytes_in"`
+	BytesOut int64  `json:"bytes_out"`
 }
 
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
-}
+func GetLogg(logger *zap.SugaredLogger) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) (err error) {
+			req := c.Request()
+			res := c.Response()
+			start := time.Now()
 
-func (rw *responseWriter) Write(b []byte) (int, error) {
-	size, err := rw.ResponseWriter.Write(b)
-	rw.size += size
-	return size, err
-}
+			if err = next(c); err != nil {
+				c.Error(err)
+			}
 
-func LoggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		start := time.Now()
+			end := time.Since(start)
 
-		l.Log.Info("Request received",
-			zap.String("URI", req.RequestURI),
-			zap.String("Method", req.Method))
+			log := logEntry{
+				Time:     start.Format(time.RFC3339Nano),
+				RemoteIP: c.RealIP(),
+				Host:     req.Host,
+				Method:   req.Method,
+				URI:      req.RequestURI,
+				Status:   res.Status,
+				Latency:  end.String(),
+				BytesIn:  req.ContentLength,
+				BytesOut: res.Size,
+			}
 
-		rW := &responseWriter{
-			ResponseWriter: res,
-			statusCode:     http.StatusOK}
-		next.ServeHTTP(rW, req)
-		d := time.Since(start)
+			if err != nil {
+				log.Error = err.Error()
+			}
 
-		l.Log.Info("Response sent",
-			zap.Int("Status", rW.statusCode),
-			zap.Int("Content Length", rW.size),
-			zap.Duration("Duration", d))
-	})
+			logger.Infow("HTTP request",
+				"time", log.Time,
+				"remote_ip", log.RemoteIP,
+				"host", log.Host,
+				"method", log.Method,
+				"uri", log.URI,
+				"status", log.Status,
+				"latency", log.Latency,
+				"bytes_in", log.BytesIn,
+				"bytes_out", log.BytesOut,
+				"error", log.Error,
+			)
+
+			return err
+		}
+	}
 }

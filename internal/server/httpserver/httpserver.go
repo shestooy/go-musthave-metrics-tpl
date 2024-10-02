@@ -2,95 +2,117 @@ package httpserver
 
 import (
 	"context"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	f "github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
-	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/labstack/echo/v4"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/config"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/handlers"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/middlewares"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"go.uber.org/zap"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 )
+
+type Server struct {
+	server *echo.Echo
+	h      *handlers.Handler
+}
 
 func Start() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if err := l.Initialize(f.LogLevel); err != nil {
+	cfg, err := config.GetServerCfg()
+	if err != nil {
 		return err
 	}
 
-	if err := initializeStorage(ctx); err != nil {
-		l.Log.Info("Error init Storage", zap.Error(err))
+	l, err := logger.Initialize(cfg.LogLevel)
+	if err != nil {
+		return err
+	}
+	s, err := initializeStorage(ctx, l, cfg)
+	if err != nil {
+		l.Info("Error init Storage", zap.Error(err))
 	}
 
-	l.Log.Info("Running server", zap.String("address", f.ServerEndPoint))
-
+	server := initServer(s, l, cfg)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
 	serverErr := make(chan error, 1)
 	go func() {
-		serverErr <- http.ListenAndServe(f.ServerEndPoint, GetRouter())
+		serverErr <- server.Start(cfg.ServerEndPoint)
 	}()
 
 	select {
-	case err := <-serverErr:
+	case err = <-serverErr:
 		if err != nil {
 			return err
 		}
 	case <-stop:
-		l.Log.Info("Shutting down...")
+		l.Info("Shutting down...")
+		if err = server.Stop(ctx); err != nil {
+			l.Info("Error shutting down", zap.Error(err))
+		}
 		cancel()
 	}
-
-	if err := storage.MStorage.Close(); err != nil {
-		l.Log.Error("Error closing storage", zap.Error(err))
-	}
-
-	l.Log.Info("Server shutdown complete")
+	l.Info("Server shutdown complete")
 	return nil
 }
 
-func GetRouter() chi.Router {
-	r := chi.NewRouter()
-
-	r.Use(middlewares.LoggingMiddleware)
-	r.Use(middlewares.GzipMiddleware)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Recoverer)
-
-	r.Get("/", handlers.GetAllMetrics)
-	r.Get("/ping", handlers.PingHandler)
-
-	r.Post("/updates/", handlers.UpdateSomeMetrics)
-
-	r.Route("/update", func(r chi.Router) {
-		r.Post("/", handlers.PostMetricsWithJSON)
-		r.Post("/{type}/{name}/{value}", handlers.PostMetrics)
-	})
-
-	r.Route("/value", func(r chi.Router) {
-		r.Post("/", handlers.GetMetricIDWithJSON)
-		r.Get("/{type}/{name}", handlers.GetMetricID)
-	})
-
-	return r
-}
-
-func initializeStorage(ctx context.Context) error {
-	if f.AddrDB == "" {
-		storage.MStorage = &storage.Storage{}
+func initializeStorage(ctx context.Context, l *zap.SugaredLogger, cfg *config.ServerCfg) (s storage.IStorage, err error) {
+	if cfg.AddrDB == "" {
+		s = &storage.Storage{}
 	} else {
-		storage.MStorage = &storage.DB{}
+		s = &storage.DB{}
 	}
-	err := storage.MStorage.Init(ctx)
+	err = s.Init(ctx, l, cfg)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return s, err
+}
+
+func initServer(s storage.IStorage, l *zap.SugaredLogger, cfg *config.ServerCfg) *Server {
+	h := handlers.NewHandler(l, s)
+
+	e := echo.New()
+
+	e.HideBanner = true
+	e.HidePort = true
+
+	e.Use(middlewares.Gzip)
+	e.Use(middlewares.GetLogg(l))
+	e.Use(middlewares.Hash(cfg.ServerKey))
+
+	e.GET("/", h.GetAllMetrics)
+	e.GET("/ping", h.PingHandler)
+
+	e.POST("/updates/", h.UpdateSomeMetrics)
+
+	updateGroup := e.Group("/update")
+	updateGroup.POST("/", h.PostMetricsWithJSON)
+	updateGroup.POST("/:type/:name/:value", h.PostMetrics)
+
+	valueGroup := e.Group("/value")
+	valueGroup.POST("/", h.GetMetricIDWithJSON)
+	valueGroup.GET("/:type/:name", h.GetMetricID)
+
+	return &Server{server: e, h: h}
+}
+
+func (s *Server) Start(endPoint string) error {
+	s.h.Logger.Info("Server starting on: ", endPoint)
+	return s.server.Start(endPoint)
+}
+
+func (s *Server) Stop(ctx context.Context) error {
+	err := s.server.Server.Shutdown(ctx)
+	if err != nil {
+		s.h.Logger.Info("Error shutting down", zap.Error(err))
+	}
+	return s.h.DB.Close()
 }

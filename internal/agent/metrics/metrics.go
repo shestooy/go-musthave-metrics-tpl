@@ -1,17 +1,20 @@
 package metrics
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"log"
 	"math/rand"
 	"runtime"
+
+	"github.com/shirou/gopsutil/v4/mem"
+	"go.uber.org/zap"
 )
 
 const (
-	Gauge   = "gauge"
-	Counter = "counter"
+	Gauge = "gauge"
 )
 
 type Metric struct {
@@ -21,9 +24,7 @@ type Metric struct {
 	Value *float64 `json:"value,omitempty"`
 }
 
-var PollCount int64
-
-func GetAllMetrics() []Metric {
+func GetRuntimeMetrics() []Metric {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	float64Ptr := func(val float64) *float64 {
@@ -61,6 +62,22 @@ func GetAllMetrics() []Metric {
 	}
 }
 
+func GetMemoryMetrics(log *zap.SugaredLogger) []Metric {
+	m, err := mem.VirtualMemory()
+	if err != nil {
+		log.Error("Error getting memory metrics: ", err)
+		return nil
+	}
+	float64Ptr := func(val float64) *float64 {
+		return &val
+	}
+	return []Metric{
+		{MType: Gauge, ID: "TotalMemory", Value: float64Ptr(float64(m.Total))},
+		{MType: Gauge, ID: "FreeMemory", Value: float64Ptr(float64(m.Free))},
+		{MType: Gauge, ID: "UsedMemory", Value: float64Ptr(m.UsedPercent)},
+	}
+}
+
 func Compress(m []Metric) ([]byte, error) {
 	var buf bytes.Buffer
 
@@ -72,6 +89,17 @@ func Compress(m []Metric) ([]byte, error) {
 		return nil, err
 	}
 	if err = w.Close(); err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func GetMetricsAsBody(m []Metric) ([]byte, error) {
+	var buf bytes.Buffer
+	w := bufio.NewWriter(&buf)
+	err := json.NewEncoder(w).Encode(m)
+	if err != nil {
 		log.Println(err.Error())
 		return nil, err
 	}

@@ -1,77 +1,51 @@
 package agent
 
 import (
-	"github.com/avast/retry-go"
-	m "github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent/metrics"
-	f "github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/utils"
-	"log"
-	"net/http"
-	"strings"
-	"time"
+	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/go-resty/resty/v2"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
+
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent/metrics"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/agent/workers"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/config"
 )
 
-func postMetrics(url string, metrics []m.Metric) error {
-	client := resty.New()
-	url, _ = strings.CutPrefix(url, "http://")
-
-	body, err := m.Compress(metrics)
+func Start() error {
+	cfg, err := config.GetAgentCfg()
 	if err != nil {
-		log.Printf("error compress procedure. Err : %s", err.Error())
 		return err
 	}
-	err = retry.Do(func() error {
-		resp, err := client.R().
-			SetHeader("Content-Type", "application/json").
-			SetHeader("Content-Encoding", "gzip").
-			SetBody(body).
-			Post("http://" + url + "/updates/")
 
-		if err != nil {
-			log.Println(err.Error())
-			if !utils.IsRetriableError(err) {
-				return retry.Unrecoverable(err)
-			}
-			return err
-		}
-
-		if resp.StatusCode() != http.StatusOK {
-			log.Printf("unexpected status code. Expected code 200, got %d.", resp.StatusCode())
-		}
-
-		m.PollCount = 0
-
-		return nil
-	},
-		retry.Attempts(4),
-		retry.DelayType(utils.RetryDelay))
-	return err
-}
-
-func Start() {
-	pollTicker := time.NewTicker(time.Duration(f.PollInterval) * time.Second)
-	defer pollTicker.Stop()
-
-	reportTicker := time.NewTicker(time.Duration(f.ReportInterval) * time.Second)
-	defer reportTicker.Stop()
-
-	metrics := make([]m.Metric, 0)
-
-	for {
-		select {
-		case <-pollTicker.C:
-			m.PollCount++
-			metrics = append(metrics, m.GetAllMetrics()...)
-
-		case <-reportTicker.C:
-			metrics = append(metrics, m.Metric{MType: m.Counter, ID: "PollCount", Delta: &m.PollCount})
-			err := postMetrics(f.AgentEndPoint, metrics)
-			if err != nil {
-				log.Printf("%s - attempts to send metrics failed", err.Error())
-			}
-			metrics = make([]m.Metric, 0)
-		}
+	l, err := logger.Initialize("info")
+	if err != nil {
+		return err
 	}
+
+	l.Infow("starting agent",
+		"address", cfg.AgentEndPoint,
+		"pollInterval", cfg.PollInterval,
+		"reportInterval", cfg.ReportInterval,
+	)
+
+	stopCh := make(chan os.Signal, 1)
+	signal.Notify(stopCh, syscall.SIGINT, syscall.SIGTERM)
+	dataCh := make(chan []metrics.Metric, 2)
+
+	readWorker := workers.NewReadWorker(l, dataCh, int(cfg.PollInterval))
+	sendWorker := workers.NewSender(l, int(cfg.ReportInterval), int(cfg.RateLimit), cfg.AgentEndPoint,
+		cfg.AgentKey, dataCh)
+
+	go func() {
+		readWorker.Start()
+	}()
+	go func() {
+		sendWorker.Start()
+	}()
+	<-stopCh
+	l.Info("shutting down agent")
+	readWorker.Stop()
+	sendWorker.Stop()
+	return err
 }
