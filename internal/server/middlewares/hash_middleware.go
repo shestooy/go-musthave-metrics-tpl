@@ -1,18 +1,23 @@
 package middlewares
 
 import (
-	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
-	"github.com/labstack/echo/v4"
 	"io"
 	"net/http"
+	"strings"
+
+	"github.com/labstack/echo/v4"
 )
 
 type responseWriter struct {
+	io.Writer
 	http.ResponseWriter
-	Body *bytes.Buffer
+}
+
+func (w *responseWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
 }
 
 func hash(data []byte, key string) []byte {
@@ -27,40 +32,36 @@ func Hash(key string) echo.MiddlewareFunc {
 			if key == "" {
 				return next(c)
 			}
-
 			reqBodyHash := c.Request().Header.Get("HashSHA256")
 			if reqBodyHash == "" {
 				return next(c)
 			}
+			body, err := io.ReadAll(c.Request().Body)
+			if err != nil {
+				c.Error(err)
+			}
+			c.Request().Body = io.NopCloser(strings.NewReader(string(body)))
+			bodyHash := hash(body, key)
 
 			resHash, err := hex.DecodeString(reqBodyHash)
 			if err != nil {
-				return err
+				c.Error(err)
 			}
-
-			body, err := io.ReadAll(c.Request().Body)
-			if err != nil {
-				return err
-			}
-
-			c.Request().Body = io.NopCloser(io.MultiReader(bytes.NewReader(body)))
-			bodyHash := hash(body, key)
 
 			if !hmac.Equal(bodyHash, resHash) {
 				return c.JSON(http.StatusBadRequest, map[string]string{"err": "the hash checksum did not match"})
 			}
 
-			res := &responseWriter{
-				ResponseWriter: c.Response().Writer,
-				Body:           &bytes.Buffer{},
-			}
-			c.Response().Writer = res
+			resBody := new(strings.Builder)
+			mw := io.MultiWriter(c.Response().Writer, resBody)
+			c.Response().Writer = &responseWriter{Writer: mw, ResponseWriter: c.Response().Writer}
+
 			err = next(c)
 			if err != nil {
 				return err
 			}
 
-			responseBytes := res.Body.Bytes()
+			responseBytes := []byte(resBody.String())
 			resHash = hash(responseBytes, key)
 			c.Response().Header().Set("HashSHA256", hex.EncodeToString(resHash))
 

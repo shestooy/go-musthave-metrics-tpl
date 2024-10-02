@@ -84,7 +84,8 @@ func Gzip(next echo.HandlerFunc) echo.HandlerFunc {
 		if strings.Contains(req.Header.Get("Content-Encoding"), "gzip") {
 			cr, err := newCompressReader(req.Body)
 			if err != nil {
-				return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+				c.Error(err)
+				return err
 			}
 			req.Body = cr
 			defer cr.Close()

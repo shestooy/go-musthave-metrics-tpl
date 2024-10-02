@@ -4,7 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
+
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/config"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
 
 	"github.com/stretchr/testify/assert"
@@ -12,18 +14,18 @@ import (
 )
 
 func TestMemStorage_Init(t *testing.T) {
-	flags.SetRestoreFlag(false)
-	flags.SetStorageInterval(5000)
-	MStorage = &Storage{}
-	err := MStorage.Init(context.Background())
+	MStorage := &Storage{}
+	l, err := logger.Initialize("info")
+	require.NoError(t, err)
+	err = MStorage.Init(context.Background(), l, &config.ServerCfg{StorageInterval: 5000, Restore: false})
 	require.NoError(t, err)
 }
 
 func TestStorage_UpdateMetric(t *testing.T) {
-	flags.SetRestoreFlag(false)
-	flags.SetStorageInterval(5000)
-	MStorage = &Storage{}
-	err := MStorage.Init(context.Background())
+	MStorage := &Storage{}
+	l, err := logger.Initialize("info")
+	require.NoError(t, err)
+	err = MStorage.Init(context.Background(), l, &config.ServerCfg{StorageInterval: 5000, Restore: false})
 	require.NoError(t, err)
 
 	metric := model.Metrics{
@@ -42,10 +44,10 @@ func TestStorage_UpdateMetric(t *testing.T) {
 }
 
 func TestMemStorage_GetMetricID(t *testing.T) {
-	flags.SetRestoreFlag(false)
-	flags.SetStorageInterval(5000)
-	MStorage = &Storage{}
-	err := MStorage.Init(context.Background())
+	MStorage := &Storage{}
+	l, err := logger.Initialize("info")
+	require.NoError(t, err)
+	err = MStorage.Init(context.Background(), l, &config.ServerCfg{StorageInterval: 5000, Restore: false})
 	require.NoError(t, err)
 
 	metric := model.Metrics{
@@ -67,10 +69,10 @@ func TestMemStorage_GetMetricID(t *testing.T) {
 }
 
 func TestStorage_GetAllMetrics(t *testing.T) {
-	flags.SetRestoreFlag(false)
-	flags.SetStorageInterval(5000)
-	MStorage = &Storage{}
-	err := MStorage.Init(context.Background())
+	MStorage := &Storage{}
+	l, err := logger.Initialize("info")
+	require.NoError(t, err)
+	err = MStorage.Init(context.Background(), l, &config.ServerCfg{StorageInterval: 5000, Restore: false})
 	require.NoError(t, err)
 
 	metric1 := model.Metrics{

@@ -7,14 +7,22 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/labstack/echo/v4"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/utils"
 	"go.uber.org/zap"
 )
 
-func PostMetricsWithJSON(c echo.Context) error {
+type Handler struct {
+	Logger *zap.SugaredLogger
+	DB     storage.IStorage
+}
+
+func NewHandler(logger *zap.SugaredLogger, DB storage.IStorage) *Handler {
+	return &Handler{logger, DB}
+}
+
+func (r *Handler) PostMetricsWithJSON(c echo.Context) error {
 	if !strings.Contains(c.Request().Header.Get("Content-Type"), "application/json") {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad request"})
 	}
@@ -26,7 +34,7 @@ func PostMetricsWithJSON(c echo.Context) error {
 
 	err := retry.Do(func() error {
 		var err error
-		m, err = storage.MStorage.SaveMetric(c.Request().Context(), m)
+		m, err = r.DB.SaveMetric(c.Request().Context(), m)
 		if err != nil {
 			if !utils.IsRetriableError(err) {
 				return retry.Unrecoverable(err)
@@ -38,14 +46,14 @@ func PostMetricsWithJSON(c echo.Context) error {
 		retry.Attempts(4),
 		retry.DelayType(utils.RetryDelay))
 	if err != nil {
-		logger.Log.Error("err", zap.Error(err))
+		r.Logger.Error("err", zap.Error(err))
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, m)
 }
 
-func PostMetrics(c echo.Context) error {
+func (r *Handler) PostMetrics(c echo.Context) error {
 	params := []string{
 		c.Param("type"),
 		c.Param("name"),
@@ -66,7 +74,7 @@ func PostMetrics(c echo.Context) error {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
 	err = retry.Do(func() error {
-		_, err = storage.MStorage.SaveMetric(c.Request().Context(), m)
+		_, err = r.DB.SaveMetric(c.Request().Context(), m)
 		if err != nil {
 			if !utils.IsRetriableError(err) {
 				return retry.Unrecoverable(err)
@@ -78,13 +86,13 @@ func PostMetrics(c echo.Context) error {
 		retry.Attempts(4),
 		retry.DelayType(utils.RetryDelay))
 	if err != nil {
-		logger.Log.Error("err", zap.Error(err))
+		r.Logger.Error("err", zap.Error(err))
 		return c.String(http.StatusBadRequest, err.Error())
 	}
 	return c.String(http.StatusOK, "200 - OK")
 }
 
-func GetMetricIDWithJSON(c echo.Context) error {
+func (r *Handler) GetMetricIDWithJSON(c echo.Context) error {
 	if !strings.Contains(c.Request().Header.Get("Content-Type"), "application/json") {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad request"})
 	}
@@ -94,7 +102,7 @@ func GetMetricIDWithJSON(c echo.Context) error {
 	}
 	err := retry.Do(func() error {
 		var err error
-		m, err = storage.MStorage.GetByID(c.Request().Context(), m.ID)
+		m, err = r.DB.GetByID(c.Request().Context(), m.ID)
 		if err != nil {
 			if !utils.IsRetriableError(err) {
 				return retry.Unrecoverable(err)
@@ -107,14 +115,14 @@ func GetMetricIDWithJSON(c echo.Context) error {
 		retry.DelayType(utils.RetryDelay))
 
 	if err != nil {
-		logger.Log.Error("err", zap.Error(err))
+		r.Logger.Error("err", zap.Error(err))
 		return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, m)
 }
 
-func GetMetricID(c echo.Context) error {
+func (r *Handler) GetMetricID(c echo.Context) error {
 	params := []string{
 		c.Param("type"),
 		c.Param("name"),
@@ -128,7 +136,7 @@ func GetMetricID(c echo.Context) error {
 	var m = model.Metrics{}
 	err := retry.Do(func() error {
 		var err error
-		m, err = storage.MStorage.GetByID(c.Request().Context(), params[1])
+		m, err = r.DB.GetByID(c.Request().Context(), params[1])
 		if err != nil {
 			if !utils.IsRetriableError(err) {
 				return retry.Unrecoverable(err)
@@ -146,12 +154,12 @@ func GetMetricID(c echo.Context) error {
 	return c.String(http.StatusOK, m.GetValueAsString())
 }
 
-func GetAllMetrics(c echo.Context) error {
+func (r *Handler) GetAllMetrics(c echo.Context) error {
 	var metrics = map[string]model.Metrics{}
 
 	err := retry.Do(func() error {
 		var err error
-		metrics, err = storage.MStorage.GetAllMetrics(c.Request().Context())
+		metrics, err = r.DB.GetAllMetrics(c.Request().Context())
 		if err != nil {
 			if !utils.IsRetriableError(err) {
 				return retry.Unrecoverable(err)
@@ -244,15 +252,15 @@ func GetAllMetrics(c echo.Context) error {
 	return nil
 }
 
-func PingHandler(c echo.Context) error {
-	err := storage.MStorage.Ping(c.Request().Context())
+func (r *Handler) PingHandler(c echo.Context) error {
+	err := r.DB.Ping(c.Request().Context())
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "failed to connect to the database")
 	}
 	return c.String(http.StatusOK, "Pong")
 }
 
-func UpdateSomeMetrics(c echo.Context) error {
+func (r *Handler) UpdateSomeMetrics(c echo.Context) error {
 	if !strings.Contains(c.Request().Header.Get("Content-Type"), "application/json") {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "bad request"})
 	}
@@ -264,7 +272,7 @@ func UpdateSomeMetrics(c echo.Context) error {
 
 	err := retry.Do(func() error {
 		var err error
-		metrics, err = storage.MStorage.SaveMetrics(c.Request().Context(), metrics)
+		metrics, err = r.DB.SaveMetrics(c.Request().Context(), metrics)
 		if err != nil {
 			if !utils.IsRetriableError(err) {
 				return retry.Unrecoverable(err)
@@ -275,7 +283,7 @@ func UpdateSomeMetrics(c echo.Context) error {
 	})
 
 	if err != nil {
-		logger.Log.Error("err", zap.Error(err))
+		r.Logger.Error("err", zap.Error(err))
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 	return c.JSON(http.StatusOK, metrics)

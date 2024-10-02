@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
 	"go.uber.org/zap"
 )
 
@@ -21,36 +20,49 @@ type logEntry struct {
 	BytesOut int64  `json:"bytes_out"`
 }
 
-func Logging(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) (err error) {
-		req := c.Request()
-		res := c.Response()
-		start := time.Now()
+func GetLogg(logger *zap.SugaredLogger) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) (err error) {
+			req := c.Request()
+			res := c.Response()
+			start := time.Now()
 
-		if err = next(c); err != nil {
-			c.Error(err)
+			if err = next(c); err != nil {
+				c.Error(err)
+			}
+
+			end := time.Since(start)
+
+			log := logEntry{
+				Time:     start.Format(time.RFC3339Nano),
+				RemoteIP: c.RealIP(),
+				Host:     req.Host,
+				Method:   req.Method,
+				URI:      req.RequestURI,
+				Status:   res.Status,
+				Latency:  end.String(),
+				BytesIn:  req.ContentLength,
+				BytesOut: res.Size,
+			}
+
+			if err != nil {
+				log.Error = err.Error()
+			}
+
+			logger.Infow("HTTP request",
+				"time", log.Time,
+				"remote_ip", log.RemoteIP,
+				"host", log.Host,
+				"method", log.Method,
+				"uri", log.URI,
+				"status", log.Status,
+				"latency", log.Latency,
+				"bytes_in", log.BytesIn,
+				"bytes_out", log.BytesOut,
+				"error", log.Error,
+			)
+
+			return err
 		}
-
-		end := time.Since(start)
-
-		log := logEntry{
-			Time:     start.Format(time.RFC3339Nano),
-			RemoteIP: c.RealIP(),
-			Host:     req.Host,
-			Method:   req.Method,
-			URI:      req.RequestURI,
-			Status:   res.Status,
-			Latency:  end.String(),
-			BytesIn:  req.ContentLength,
-			BytesOut: res.Size,
-		}
-
-		if err != nil {
-			log.Error = err.Error()
-		}
-
-		logger.Log.Info("logging", zap.Any("fields", log))
-
-		return err
 	}
 }

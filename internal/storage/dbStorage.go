@@ -4,30 +4,32 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/config"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/model"
+	"go.uber.org/zap"
 )
 
 type DB struct {
-	db *sql.DB
+	logger *zap.SugaredLogger
+	db     *sql.DB
 }
 
 func (p *DB) Ping(ctx context.Context) error {
 	return p.db.PingContext(ctx)
 }
 
-func (p *DB) Init(_ context.Context) error {
+func (p *DB) Init(_ context.Context, l *zap.SugaredLogger, cfg *config.ServerCfg) error {
 	var err error
-	p.db, err = sql.Open("pgx", flags.AddrDB)
+	p.db, err = sql.Open("pgx", cfg.AddrDB)
 	if err != nil {
 		return err
 	}
+	p.logger = l
 	return p.NewPostgresStorage()
 }
 
@@ -138,7 +140,7 @@ func (p *DB) SaveMetrics(ctx context.Context, metrics []model.Metrics) ([]model.
 									RETURNING value`, metric.ID, metric.MType, *metric.Value).Scan(
 				&ansMetric.Value)
 			if err != nil {
-				log.Println(err.Error())
+				p.logger.Error(err.Error())
 				return nil, err
 			}
 			ansMetric.MType = metric.MType
@@ -150,7 +152,7 @@ func (p *DB) SaveMetrics(ctx context.Context, metrics []model.Metrics) ([]model.
 									DO UPDATE SET delta = metrics.delta +excluded.delta
 									RETURNING delta`, metric.ID, metric.MType, *metric.Delta).Scan(&ansMetric.Delta)
 			if err != nil {
-				log.Println(err.Error())
+				p.logger.Error(err.Error())
 				return nil, err
 			}
 			ansMetric.MType = metric.MType

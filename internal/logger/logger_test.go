@@ -16,7 +16,8 @@ func TestInitialize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := Initialize(tt.level)
+			l, err := Initialize(tt.level)
+			assert.NotEmpty(t, l)
 			assert.NoError(t, err)
 		})
 	}

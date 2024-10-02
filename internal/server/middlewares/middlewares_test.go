@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v4"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/config"
 	l "github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/handlers"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
@@ -21,7 +21,7 @@ import (
 )
 
 func TestLoggingMiddleware(t *testing.T) {
-	err := l.Initialize("info")
+	logger, err := l.Initialize("info")
 	require.NoError(t, err)
 
 	testHandler := func(c echo.Context) error {
@@ -30,8 +30,8 @@ func TestLoggingMiddleware(t *testing.T) {
 	require.NotEmpty(t, testHandler)
 
 	e := echo.New()
-
-	middleware := Logging(testHandler)
+	logg := GetLogg(logger)
+	middleware := logg(testHandler)
 	require.NotEmpty(t, middleware)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
@@ -47,15 +47,15 @@ func TestLoggingMiddleware(t *testing.T) {
 }
 
 func TestGzipCompression(t *testing.T) {
-	storage.MStorage = &storage.Storage{}
-	err := storage.MStorage.Init(context.Background())
+	MStorage := &storage.Storage{}
+	logger, err := l.Initialize("info")
+	require.NoError(t, err)
+	err = MStorage.Init(context.Background(), logger, &config.ServerCfg{StorageInterval: 5000, Restore: false})
 	require.NoError(t, err)
 
-	flags.SetRestoreFlag(false)
-	flags.SetStorageInterval(5000)
-
+	h := handlers.NewHandler(logger, MStorage)
 	e := echo.New()
-	e.POST("/update/", Gzip(handlers.PostMetricsWithJSON))
+	e.POST("/update/", Gzip(h.PostMetricsWithJSON))
 
 	srv := httptest.NewServer(e.Server.Handler)
 	defer srv.Close()

@@ -74,9 +74,7 @@ func (s *Sender) sendMetrics(metrics []m.Metric) {
 	s.semaphore.Acquire()
 	defer s.semaphore.Release()
 	defer s.wg.Done()
-	s.mu.RLock()
 	url := s.address
-	s.mu.RUnlock()
 
 	client := resty.New()
 	url, _ = strings.CutPrefix(url, "http://")

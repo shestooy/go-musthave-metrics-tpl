@@ -7,8 +7,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/logger"
+
 	"github.com/labstack/echo/v4"
-	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/flags"
+	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/config"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/server/middlewares"
 	"github.com/shestooy/go-musthave-metrics-tpl.git/internal/storage"
 
@@ -28,34 +30,34 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) int {
 }
 
 func testServer(t *testing.T) *echo.Echo {
-	flags.SetRestoreFlag(false)
-	flags.SetStorageInterval(5000)
 
-	storage.MStorage = &storage.Storage{}
-	err := storage.MStorage.Init(context.Background())
+	MStorage := &storage.Storage{}
+	l, err := logger.Initialize("info")
+	require.NoError(t, err)
+	err = MStorage.Init(context.Background(), l, &config.ServerCfg{Restore: false, StorageInterval: 5000})
 	require.NoError(t, err)
 
+	h := NewHandler(l, MStorage)
 	e := echo.New()
 
 	e.HideBanner = true
 	e.HidePort = true
 
 	e.Use(middlewares.Gzip)
-	e.Use(middlewares.Logging)
-	e.Use(middlewares.Hash(flags.ServerKey))
+	e.Use(middlewares.GetLogg(l))
 
-	e.GET("/", GetAllMetrics)
-	e.GET("/ping", PingHandler)
+	e.GET("/", h.GetAllMetrics)
+	e.GET("/ping", h.PingHandler)
 
-	e.POST("/updates/", UpdateSomeMetrics)
+	e.POST("/updates/", h.UpdateSomeMetrics)
 
 	updateGroup := e.Group("/update")
-	updateGroup.POST("/", PostMetricsWithJSON)
-	updateGroup.POST("/:type/:name/:value", PostMetrics)
+	updateGroup.POST("/", h.PostMetricsWithJSON)
+	updateGroup.POST("/:type/:name/:value", h.PostMetrics)
 
 	valueGroup := e.Group("/value")
-	valueGroup.POST("/", GetMetricIDWithJSON)
-	valueGroup.GET("/:type/:name", GetMetricID)
+	valueGroup.POST("/", h.GetMetricIDWithJSON)
+	valueGroup.GET("/:type/:name", h.GetMetricID)
 	return e
 }
 
